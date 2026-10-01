@@ -45,7 +45,7 @@ public class TechTreeDialog extends JDialog {
         this.onUpdateCallback = onUpdateCallback;
 
         buildUI();
-        setSize(860, 680);
+        setSize(980, 750);
         setLocationRelativeTo(parent);
     }
 

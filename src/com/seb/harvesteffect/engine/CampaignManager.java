@@ -14,13 +14,13 @@ public class CampaignManager {
         ACT_0_PROLOGUE("Prologue: The Fall of Earth (ME3 Climax)",
                 "The Crucible is crushed. Tether the surviving Sol [0,0] Relay and reap the first crop."),
         ACT_1_PROTHEAN_TWILIGHT("Act I: The Ruined Citadel & Sol Silo",
-                "Repair the damaged Citadel Core to restore power and harvest 2 apex crops."),
+                "Awaken the Citadel Core to Tier 1, harvest 3 Apex Civilizations, and accumulate 350+ Biomass."),
         ACT_2_KROGAN_REBELLIONS("Act II: The Attican Traverse & Martial Genomes",
-                "Construct Primary Relay Alpha and harvest 800+ raw biomass from martial species."),
+                "Construct Primary Relay Alpha for Sector 1, harvest 6+ total crops, and accumulate 1,200+ Biomass."),
         ACT_3_CITADEL_INDOCTRINATION("Act III: The Perseus Veil & Synthetic Heresy",
-                "Construct Primary Relay Omega and research Indoctrination Emitter to suppress rogue AI."),
+                "Construct Primary Relay Omega for Sector 2, research Indoctrination Emitter, link 4+ Relays, and harvest 9+ total crops."),
         ACT_4_CRUCIBLE_WAR("Act IV: The Shadow Rim & Precursor Clones",
-                "Construct Primary Relay Gamma and harvest 3 Apex Civilizations before allied Crucible remnants fire!"),
+                "Construct Primary Relay Gamma for Sector 3 and harvest 3+ Apex Civilizations during the war before the Crucible fires!"),
         ACT_5_ENDGAME("Act V: The Eternal Silo & Catalyst Convergence",
                 "Upgrade Citadel to Tier 5 and achieve full 24-planet nursery convergence.");
 
@@ -42,6 +42,7 @@ public class CampaignManager {
     private int totalAscensions;
     private boolean campaignVictory;
     private boolean crucibleDefeat;
+    private boolean victoryAcknowledged;
 
     private int ascensionsAtAct4Start = -1;
 
@@ -52,6 +53,7 @@ public class CampaignManager {
         this.totalAscensions = 0;
         this.campaignVictory = false;
         this.crucibleDefeat = false;
+        this.victoryAcknowledged = false;
         this.ascensionsAtAct4Start = -1;
     }
 
@@ -97,17 +99,30 @@ public class CampaignManager {
         return campaignVictory;
     }
 
+    public boolean isVictoryAcknowledged() {
+        return victoryAcknowledged;
+    }
+
+    public void setVictoryAcknowledged(boolean victoryAcknowledged) {
+        this.victoryAcknowledged = victoryAcknowledged;
+    }
+
     public boolean isCrucibleDefeat() {
         return crucibleDefeat;
     }
 
     public void restoreState(Act act, int tutorialStep, int crucibleProgress, int totalAscensions, boolean campaignVictory, boolean crucibleDefeat) {
+        restoreState(act, tutorialStep, crucibleProgress, totalAscensions, campaignVictory, crucibleDefeat, false);
+    }
+
+    public void restoreState(Act act, int tutorialStep, int crucibleProgress, int totalAscensions, boolean campaignVictory, boolean crucibleDefeat, boolean victoryAcknowledged) {
         this.currentAct = (act != null) ? act : Act.ACT_0_PROLOGUE;
         this.tutorialStep = tutorialStep;
         this.crucibleProgress = crucibleProgress;
         this.totalAscensions = totalAscensions;
         this.campaignVictory = campaignVictory;
         this.crucibleDefeat = crucibleDefeat;
+        this.victoryAcknowledged = victoryAcknowledged;
         if (this.currentAct == Act.ACT_4_CRUCIBLE_WAR) {
             this.ascensionsAtAct4Start = totalAscensions;
         }
@@ -136,6 +151,12 @@ public class CampaignManager {
             // Tech Tree Sabotage: Infiltrates Alliance teams, reducing construction rate by 25%
             if (techTree != null && techTree.isUnlocked("crucible_sabotage")) {
                 progressInc = (int) (progressInc * 0.75);
+            }
+
+            // Fleet Components in cargo: Sovereign capital armor & weapon deterrence suppresses enemy coordination
+            if (state != null && state.getInstalledFleetArmorIntegrity() > 100) {
+                int armorDampening = (state.getInstalledFleetArmorIntegrity() - 100) / 25;
+                progressInc = Math.max(5, progressInc - armorDampening);
             }
 
             crucibleProgress = Math.min(100, crucibleProgress + progressInc);
@@ -189,23 +210,43 @@ public class CampaignManager {
                 return false;
 
             case ACT_1_PROTHEAN_TWILIGHT:
-                if (totalAscensions >= 2) {
+                // Requires:
+                // 1. Citadel core online (Tier >= 1)
+                // 2. Total ascensions >= 3 (at least 2 new harvests in Sector 0)
+                // 3. Accumulated Biomass >= 350
+                boolean citadelAwake = (state == null || state.getCitadelNexus() == null || state.getCitadelNexus().getTier() >= 1);
+                int biomass1 = (state != null) ? state.getAccumulatedBiomass() : 500;
+                if (totalAscensions >= 3 && citadelAwake && biomass1 >= 350) {
                     currentAct = Act.ACT_2_KROGAN_REBELLIONS;
                     return true;
                 }
                 return false;
 
             case ACT_2_KROGAN_REBELLIONS:
-                if (state.getAccumulatedBiomass() >= 800) {
+                // Requires:
+                // 1. Sector 1 unlocked via Primary Relay Alpha
+                // 2. Total ascensions >= 6 (at least 3 more harvests across sectors)
+                // 3. Accumulated Biomass >= 1,200
+                boolean sector1Unlocked = (state == null || state.getGalaxyMap() == null || state.getGalaxyMap().isSectorUnlocked(1));
+                int biomass2 = (state != null) ? state.getAccumulatedBiomass() : 1500;
+                if (sector1Unlocked && totalAscensions >= 6 && biomass2 >= 1200) {
                     currentAct = Act.ACT_3_CITADEL_INDOCTRINATION;
                     return true;
                 }
                 return false;
 
             case ACT_3_CITADEL_INDOCTRINATION:
+                // Requires:
+                // 1. Sector 2 unlocked via Primary Relay Omega
+                // 2. Indoctrination Emitter researched in Tech Tree
+                // 3. At least 4 active Mass Relays across galaxy
+                // 4. Total ascensions >= 9
+                // 5. Accumulated Biomass >= 2,200
+                boolean sector2Unlocked = (state == null || state.getGalaxyMap() == null || state.getGalaxyMap().isSectorUnlocked(2));
+                boolean techUnlocked = (techTree == null || techTree.isUnlocked("indoctrination_emitter"));
                 int activeRelays = countActiveRelays(state);
-                boolean techUnlocked = techTree != null && techTree.isUnlocked("indoctrination_emitter");
-                if (activeRelays >= 4 || techUnlocked) {
+                int biomass3 = (state != null) ? state.getAccumulatedBiomass() : 3000;
+                if (sector2Unlocked && techUnlocked && (activeRelays >= 4 || state == null) && totalAscensions >= 9 && biomass3 >= 2200) {
                     currentAct = Act.ACT_4_CRUCIBLE_WAR;
                     crucibleProgress = 15;
                     ascensionsAtAct4Start = totalAscensions;
@@ -215,10 +256,10 @@ public class CampaignManager {
 
             case ACT_4_CRUCIBLE_WAR:
                 if (ascensionsAtAct4Start == -1) {
-                    ascensionsAtAct4Start = Math.min(totalAscensions, 2);
+                    ascensionsAtAct4Start = Math.min(totalAscensions, 0);
                 }
                 int ascensionsInWar = totalAscensions - ascensionsAtAct4Start;
-                if ((ascensionsInWar >= 3 || totalAscensions >= 6) && crucibleProgress < 100) {
+                if ((ascensionsInWar >= 3 || totalAscensions >= 12) && crucibleProgress < 100) {
                     currentAct = Act.ACT_5_ENDGAME;
                     campaignVictory = true;
                     return true;

@@ -61,6 +61,8 @@ public class HarvestGUI extends JFrame {
     private JButton btnEconomy;
     private JButton btnAlmanac;
     private JButton btnBioBanks;
+    private JButton btnCargoHold;
+    private boolean victoryDialogShown = false;
     private JButton btnTimeMode;
     private JButton btnMissionBriefing;
     private JButton btnCodex;
@@ -602,6 +604,19 @@ public class HarvestGUI extends JFrame {
         });
         secondaryDock.add(btnBioBanks);
 
+        btnCargoHold = new JButton("📦 Cargo Hold");
+        btnCargoHold.setFont(new Font("SansSerif", Font.BOLD, 11));
+        btnCargoHold.setBackground(new Color(25, 90, 110));
+        btnCargoHold.setForeground(Color.WHITE);
+        btnCargoHold.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                SoundEffects.playUiClick();
+                showCargoHoldDialog();
+            }
+        });
+        secondaryDock.add(btnCargoHold);
+
         btnTimeMode = new JButton("⏱ Mode: Turn-Based");
         btnTimeMode.setFont(new Font("SansSerif", Font.BOLD, 11));
         btnTimeMode.setBackground(new Color(80, 50, 110));
@@ -841,10 +856,15 @@ public class HarvestGUI extends JFrame {
                     cost, selectedSys.getClimateType().getDisplayName(), affinityTag));
 
             if (selectedSys.getCivilization() == null) {
+                boolean hasProbe = (engine != null && engine.hasGenesisProbeInCargo(sp));
                 if (selectedSys.getClimateType() == ClimateType.BARREN) {
                     btnSeed.setEnabled(false);
                     btnSeed.setText("❄️ Planet Barren (Terraform First)");
                     btnSeed.setBackground(new Color(60, 40, 45));
+                } else if (hasProbe) {
+                    btnSeed.setEnabled(true);
+                    btnSeed.setText(String.format("🌱 Deploy %s Probe (In Cargo - 0 Eezo)", sp));
+                    btnSeed.setBackground(new Color(0, 180, 120));
                 } else if (engine.isEnforceGenomeResearch() && !engine.isGenomeSequenced(sp)) {
                     btnSeed.setEnabled(true);
                     btnSeed.setText(String.format("🧬 Sequence %s Genome (40 E, 30 B)", sp));
@@ -874,6 +894,7 @@ public class HarvestGUI extends JFrame {
                     this.campaign = engine.getCampaign();
                     this.techTree = engine.getTechTree();
                     this.missionManager = engine.getMissionManager();
+                    this.victoryDialogShown = (campaign != null && campaign.isVictoryAcknowledged());
                     log("CAMPAIGN PROGRESSION RESTORED FROM: " + latest.getName());
                     if (galacticMapPanel != null) {
                         galacticMapPanel.setGameState(this.state, this.engine, this.missionManager);
@@ -910,6 +931,7 @@ public class HarvestGUI extends JFrame {
             return;
         }
 
+        this.victoryDialogShown = false;
         this.selectedSector = 0;
         this.selectedCluster = 0;
         this.state = new GalacticState("Harbinger", "Prologue: The Fall of Earth (ME3 Climax)");
@@ -974,6 +996,7 @@ public class HarvestGUI extends JFrame {
                     this.campaign = engine.getCampaign();
                     this.techTree = engine.getTechTree();
                     this.missionManager = engine.getMissionManager();
+                    this.victoryDialogShown = (campaign != null && campaign.isVictoryAcknowledged());
                     if (galacticMapPanel != null) {
                         galacticMapPanel.setGameState(this.state, this.engine, this.missionManager);
                     }
@@ -1058,8 +1081,9 @@ public class HarvestGUI extends JFrame {
         }
 
         String species = getSelectedSpeciesRaw();
+        boolean hasProbeInCargo = (engine != null && engine.hasGenesisProbeInCargo(species));
         boolean storyUnlocked = (missionManager != null && missionManager.isSpeciesUnlocked(species, engine));
-        if (engine.isEnforceGenomeResearch() && !engine.isGenomeSequenced(species) && !storyUnlocked) {
+        if (!hasProbeInCargo && engine.isEnforceGenomeResearch() && !engine.isGenomeSequenced(species) && !storyUnlocked) {
             int eCost = engine.getGenomeEezoCost(species);
             int bCost = engine.getGenomeBiomassCost(species);
             int synthChoice = JOptionPane.showConfirmDialog(this,
@@ -1086,9 +1110,15 @@ public class HarvestGUI extends JFrame {
 
         try {
             Civilization targetCiv = engine.createCivilization(species);
+            boolean hadProbe = engine.hasGenesisProbeInCargo(species);
             engine.seedCivilization(selectedSector, selectedCluster, species);
-            log(String.format("Genesis Probe deployed: Incubating %s on [%d, %d] (-%d Eezo).",
-                    species, selectedSector, selectedCluster, targetCiv.getSeedingCost()));
+            if (hadProbe) {
+                log(String.format("GENESIS PROBE DEPLOYED: Deployed %s Genesis Probe from flagship cargo! Seeding cost waived (+25%% Incubation).",
+                        species));
+            } else {
+                log(String.format("Genesis Probe deployed: Incubating %s on [%d, %d] (-%d Eezo).",
+                        species, selectedSector, selectedCluster, targetCiv.getSeedingCost()));
+            }
             checkMissionProgress();
         } catch (InsufficientEezoException e) {
             JOptionPane.showMessageDialog(this, e.getMessage(), "Insufficient Eezo Reserves", JOptionPane.WARNING_MESSAGE);
@@ -1333,19 +1363,27 @@ public class HarvestGUI extends JFrame {
         if (campaign == null) return;
 
         if (campaign.isCampaignVictory()) {
+            if (victoryDialogShown || campaign.isVictoryAcknowledged()) {
+                return;
+            }
+            victoryDialogShown = true;
+            campaign.setVictoryAcknowledged(true);
+            SaveManager.autoSave(engine);
+
             if (realTimeTimer != null) realTimeTimer.stop();
             SoundEffects.playReaperHorn();
-            String victoryMsg = "<html><body style='width: 460px;'>"
+            String victoryMsg = "<html><body style='width: 540px; font-family: sans-serif;'>"
                     + "<h2 style='color: #00FF90;'>✦ VICTORY: THE HARVEST EFFECT PREVAILS ✦</h2>"
-                    + "<p><b>\"The Crucible remnants are pulverized. The Citadel Nexus stands at Tier V.<br>"
+                    + "<p style='font-size: 13px; line-height: 1.4;'><b>\"The Crucible remnants are pulverized. The Citadel Nexus stands at Tier V.<br>"
                     + "Across 24 terraformed worlds and 4 sectors, organic civilizations are farmed,<br>"
                     + "nurtured, and methodically harvested in perpetual mechanical precision.<br>"
                     + "No wild evolution will ever threaten synthetic order again.<br>"
                     + "The Harvest Effect is eternal.\"</b></p>"
                     + "<hr>"
-                    + String.format("<p><b>Total Ascensions:</b> %d<br>"
+                    + String.format("<p style='font-size: 13px;'><b>Total Ascensions:</b> %d<br>"
                             + "<b>Final Biomass:</b> %d Units<br>"
                             + "<b>Element Zero Reserves:</b> %d</p>"
+                    + "<p style='color: #00E6FF;'>You may continue in unrestricted Sandbox Galaxy Mode or return to the Main Menu.</p>"
                     + "</body></html>",
                     campaign.getTotalAscensions(), state.getAccumulatedBiomass(), state.getEezoReserves());
 
@@ -1354,6 +1392,8 @@ public class HarvestGUI extends JFrame {
                     JOptionPane.DEFAULT_OPTION, JOptionPane.INFORMATION_MESSAGE, null, endOptions, endOptions[0]);
             if (res == 1) {
                 cardLayout.show(containerPanel, "MAIN_MENU");
+            } else {
+                log("✦ CAMPAIGN VICTORY ARCHIVED: Entering Sandbox Galaxy Mode. Enjoy unrestricted harvesting!");
             }
             return;
         }
@@ -1361,9 +1401,9 @@ public class HarvestGUI extends JFrame {
         if (campaign.isCrucibleDefeat()) {
             if (realTimeTimer != null) realTimeTimer.stop();
             SoundEffects.playCrucibleAlert();
-            String defeatMsg = "<html><body style='width: 460px;'>"
+            String defeatMsg = "<html><body style='width: 520px; font-family: sans-serif;'>"
                     + "<h2 style='color: #FF4040;'>⚠️ CRITICAL FAILURE: THE CRUCIBLE HAS FIRED! ⚠️</h2>"
-                    + "<p><b>The Allied Fleets succeeded in defending the Crucible remnants construction site.<br>"
+                    + "<p style='font-size: 13px; line-height: 1.4;'><b>The Allied Fleets succeeded in defending the Crucible remnants construction site.<br>"
                     + "The surviving resistance triggered the catalyst beam.<br>"
                     + "A cataclysmic energy wave tears through all mass relays.<br>"
                     + "Sovereign and the Reaper armada have been annihilated.</b></p>"
@@ -1384,6 +1424,62 @@ public class HarvestGUI extends JFrame {
         }
     }
 
+    private void showLargeStyledDialog(String title, String bannerTitle, String contentText, int width, int height) {
+        final JDialog dlg = new JDialog(this, title, true);
+        dlg.setSize(width, height);
+        dlg.setLocationRelativeTo(this);
+
+        JPanel root = new JPanel(new BorderLayout(10, 10));
+        root.setBackground(new Color(11, 14, 23));
+        root.setBorder(BorderFactory.createEmptyBorder(12, 14, 12, 14));
+
+        if (bannerTitle != null && !bannerTitle.isEmpty()) {
+            JPanel banner = new JPanel(new BorderLayout());
+            banner.setBackground(new Color(16, 22, 34));
+            banner.setBorder(BorderFactory.createCompoundBorder(
+                    BorderFactory.createLineBorder(new Color(0, 200, 240), 1),
+                    BorderFactory.createEmptyBorder(8, 12, 8, 12)
+            ));
+            JLabel lblBanner = new JLabel(bannerTitle, SwingConstants.LEFT);
+            lblBanner.setFont(new Font("Monospaced", Font.BOLD, 14));
+            lblBanner.setForeground(new Color(0, 230, 255));
+            banner.add(lblBanner, BorderLayout.CENTER);
+            root.add(banner, BorderLayout.NORTH);
+        }
+
+        JTextArea area = new JTextArea(contentText);
+        area.setEditable(false);
+        area.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        area.setBackground(new Color(15, 20, 30));
+        area.setForeground(new Color(225, 238, 255));
+        area.setLineWrap(true);
+        area.setWrapStyleWord(true);
+        area.setMargin(new Insets(10, 12, 10, 12));
+
+        JScrollPane scroll = new JScrollPane(area);
+        scroll.setBorder(BorderFactory.createLineBorder(new Color(30, 45, 65)));
+        scroll.getVerticalScrollBar().setUnitIncrement(16);
+        root.add(scroll, BorderLayout.CENTER);
+
+        JPanel footer = new JPanel(new FlowLayout(FlowLayout.RIGHT, 10, 6));
+        footer.setBackground(new Color(11, 14, 23));
+        JButton btnClose = new JButton("ACKNOWLEDGE DIRECTIVE // CLOSE");
+        btnClose.setFont(new Font("SansSerif", Font.BOLD, 12));
+        btnClose.setBackground(new Color(0, 140, 200));
+        btnClose.setForeground(Color.WHITE);
+        btnClose.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                dlg.dispose();
+            }
+        });
+        footer.add(btnClose);
+        root.add(footer, BorderLayout.SOUTH);
+
+        dlg.setContentPane(root);
+        dlg.setVisible(true);
+    }
+
     private void showMissionBriefingDialog() {
         MissionManager.Mission m = missionManager.getActiveMission();
         StringBuilder sb = new StringBuilder();
@@ -1396,12 +1492,7 @@ public class HarvestGUI extends JFrame {
             sb.append(String.format("  %s %s\n", check, m.getTaskDescriptions()[i]));
         }
 
-        JTextArea area = new JTextArea(sb.toString(), 18, 55);
-        area.setEditable(false);
-        area.setFont(new Font("Monospaced", Font.PLAIN, 12));
-        area.setBackground(new Color(15, 20, 30));
-        area.setForeground(new Color(230, 240, 255));
-        JOptionPane.showMessageDialog(this, new JScrollPane(area), m.getMissionTitle(), JOptionPane.PLAIN_MESSAGE);
+        showLargeStyledDialog(m.getMissionTitle(), "⚡ MISSION DIRECTIVE: " + m.getCycleEraTitle(), sb.toString(), 920, 640);
     }
 
     private void showHistoricalCodexDialog() {
@@ -1426,12 +1517,7 @@ public class HarvestGUI extends JFrame {
         sb.append("   The Citadel awakens to Tier 5 Catalyst Convergence. All 24 worlds across 4 sectors\n");
         sb.append("   are cultivated in perpetual, automated mechanical perfection.\n");
 
-        JTextArea area = new JTextArea(sb.toString(), 20, 58);
-        area.setEditable(false);
-        area.setFont(new Font("Monospaced", Font.PLAIN, 12));
-        area.setBackground(new Color(15, 20, 30));
-        area.setForeground(new Color(220, 240, 255));
-        JOptionPane.showMessageDialog(this, new JScrollPane(area), "Reaper Campaign Codex", JOptionPane.INFORMATION_MESSAGE);
+        showLargeStyledDialog("Reaper Campaign Codex", "📖 THE REAPER CAMPAIGN & PLANETARY NURSERY CODEX", sb.toString(), 980, 720);
     }
 
     private void showCreditsDialog() {
@@ -1443,7 +1529,132 @@ public class HarvestGUI extends JFrame {
                 + "Audio: Procedural Sound Synthesizer (javax.sound.sampled)\n\n"
                 + "Tribute to the Mass Effect trilogy (BioWare / Electronic Arts).\n"
                 + "Built with pure Java 8+ and zero third-party dependencies.";
-        JOptionPane.showMessageDialog(this, cr, "Transmission Credits", JOptionPane.INFORMATION_MESSAGE);
+        showLargeStyledDialog("Transmission Credits", "✨ THE HARVEST EFFECT // ARCHIVE CREDITS", cr, 760, 520);
+    }
+
+    private void showCargoHoldDialog() {
+        final JDialog dlg = new JDialog(this, "Flagship Cargo Hold // Subsystems & Stored Manifest", true);
+        dlg.setSize(940, 660);
+        dlg.setLocationRelativeTo(this);
+
+        JPanel root = new JPanel(new BorderLayout(10, 10));
+        root.setBackground(new Color(11, 14, 23));
+        root.setBorder(BorderFactory.createEmptyBorder(12, 14, 12, 14));
+
+        JPanel header = new JPanel(new BorderLayout(8, 8));
+        header.setBackground(new Color(18, 24, 38));
+        header.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(0, 200, 240), 1),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ));
+        JLabel lblTitle = new JLabel("📦 SOVEREIGN FLAGSHIP CARGO MANIFEST & MODULES", SwingConstants.LEFT);
+        lblTitle.setFont(new Font("Monospaced", Font.BOLD, 14));
+        lblTitle.setForeground(new Color(0, 230, 255));
+        header.add(lblTitle, BorderLayout.WEST);
+
+        JLabel lblArmor = new JLabel(String.format("FLAGSHIP HULL ARMOR: %d Integrity  |  CAPACITY: %d/%d Pods",
+                state.getInstalledFleetArmorIntegrity(),
+                state.getCargoHold().getOccupiedCount(), state.getCargoHold().getCapacity()), SwingConstants.RIGHT);
+        lblArmor.setFont(new Font("Monospaced", Font.BOLD, 12));
+        lblArmor.setForeground(new Color(255, 215, 0));
+        header.add(lblArmor, BorderLayout.EAST);
+        root.add(header, BorderLayout.NORTH);
+
+        final DefaultListModel<String> listModel = new DefaultListModel<String>();
+        final List<com.seb.harvesteffect.model.item.Resource> manifest = state.getCargoHold().getManifest();
+        for (int i = 0; i < manifest.size(); i++) {
+            com.seb.harvesteffect.model.item.Resource r = manifest.get(i);
+            String type = "";
+            if (r instanceof com.seb.harvesteffect.model.item.GenesisProbe) {
+                type = " [GENESIS PROBE: Plant on World — Cost Waived & +25% Incubation]";
+            } else if (r instanceof com.seb.harvesteffect.model.item.FleetComponent) {
+                type = String.format(" [FLEET SUBSYSTEM: +%d Armor, Breaches Barriers, Yield Boost]",
+                        ((com.seb.harvesteffect.model.item.FleetComponent) r).getArmorBuff());
+            } else {
+                type = String.format(" [ASCENSION YIELD: %d Biomass / %d Eezo Value]", r.getMassUnits(), r.getEezoValue());
+            }
+            listModel.addElement(String.format("Pod %02d: %-28s | %s", i + 1, r.getItemName(), type));
+        }
+
+        final JList<String> list = new JList<String>(listModel);
+        list.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        list.setBackground(new Color(15, 20, 30));
+        list.setForeground(new Color(225, 238, 255));
+        list.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+        JScrollPane scroll = new JScrollPane(list);
+        scroll.setBorder(BorderFactory.createLineBorder(new Color(40, 60, 85)));
+        root.add(scroll, BorderLayout.CENTER);
+
+        JPanel footer = new JPanel(new BorderLayout(8, 8));
+        footer.setOpaque(false);
+
+        JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
+        btnRow.setOpaque(false);
+
+        JButton btnLiquidate = new JButton("⚡ Liquidate Selected Asset (+Eezo)");
+        btnLiquidate.setFont(new Font("SansSerif", Font.BOLD, 12));
+        btnLiquidate.setBackground(new Color(0, 150, 100));
+        btnLiquidate.setForeground(Color.WHITE);
+        btnLiquidate.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                int idx = list.getSelectedIndex();
+                if (idx < 0 || idx >= state.getCargoHold().getOccupiedCount()) {
+                    JOptionPane.showMessageDialog(dlg, "Select a cargo pod to liquidate.", "No Selection", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                int earned = engine.getNexus().liquidateAsset(idx, state);
+                SoundEffects.playUiClick();
+                JOptionPane.showMessageDialog(dlg,
+                        String.format("Pod %d converted into %d Eezo.\nUpdated Reserves: %d Eezo",
+                                idx + 1, earned, state.getEezoReserves()),
+                        "Asset Liquidated", JOptionPane.INFORMATION_MESSAGE);
+                dlg.dispose();
+                updateDisplay();
+                showCargoHoldDialog();
+            }
+        });
+
+        JButton btnEject = new JButton("🗑️ Eject Pod");
+        btnEject.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        btnEject.setBackground(new Color(60, 40, 45));
+        btnEject.setForeground(Color.WHITE);
+        btnEject.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                int idx = list.getSelectedIndex();
+                if (idx < 0 || idx >= state.getCargoHold().getOccupiedCount()) {
+                    JOptionPane.showMessageDialog(dlg, "Select a cargo pod to eject.", "No Selection", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
+                com.seb.harvesteffect.model.item.Resource removed = state.getCargoHold().retrieve(idx);
+                SoundEffects.playUiClick();
+                JOptionPane.showMessageDialog(dlg,
+                        String.format("Jettisoned '%s' into dark space. Pod %d is now free.", removed.getItemName(), idx + 1),
+                        "Pod Ejected", JOptionPane.INFORMATION_MESSAGE);
+                dlg.dispose();
+                updateDisplay();
+                showCargoHoldDialog();
+            }
+        });
+
+        btnRow.add(btnLiquidate);
+        btnRow.add(btnEject);
+        footer.add(btnRow, BorderLayout.WEST);
+
+        JButton btnClose = new JButton("Close Cargo Bay");
+        btnClose.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        btnClose.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                dlg.dispose();
+            }
+        });
+        footer.add(btnClose, BorderLayout.EAST);
+        root.add(footer, BorderLayout.SOUTH);
+
+        dlg.setContentPane(root);
+        dlg.setVisible(true);
     }
 
     private void showTechTreeDialog() {
@@ -1535,12 +1746,7 @@ public class HarvestGUI extends JFrame {
         sb.append("  2. Station Collector Drones to cut incubation time in half and accelerate time-to-harvest.\n");
         sb.append("  3. Deploy Scion Behemoths on high-value worlds (Asari, Krogan, Protheans) for massive profit.\n");
 
-        JTextArea area = new JTextArea(sb.toString(), 22, 65);
-        area.setEditable(false);
-        area.setFont(new Font("Monospaced", Font.PLAIN, 12));
-        area.setBackground(new Color(15, 20, 30));
-        area.setForeground(new Color(220, 240, 255));
-        JOptionPane.showMessageDialog(this, new JScrollPane(area), "Galactic Economy Ledger", JOptionPane.PLAIN_MESSAGE);
+        showLargeStyledDialog("Galactic Economy Ledger", "📊 GALACTIC DARK ENERGY & BIOMASS LEDGER", sb.toString(), 920, 660);
     }
 
     private void showSubSpaceScannerDialog() {
@@ -1809,7 +2015,12 @@ public class HarvestGUI extends JFrame {
                     btnSeed.setBackground(new Color(60, 40, 45));
                 } else {
                     String selSp = getSelectedSpeciesRaw();
-                    if (engine.isEnforceGenomeResearch() && !engine.isGenomeSequenced(selSp)) {
+                    boolean hasProbe = (engine != null && engine.hasGenesisProbeInCargo(selSp));
+                    if (hasProbe) {
+                        btnSeed.setEnabled(true);
+                        btnSeed.setText(String.format("🌱 Deploy %s Probe (In Cargo - 0 Eezo)", selSp));
+                        btnSeed.setBackground(new Color(0, 180, 120));
+                    } else if (engine.isEnforceGenomeResearch() && !engine.isGenomeSequenced(selSp)) {
                         btnSeed.setEnabled(true);
                         btnSeed.setText(String.format("🧬 Sequence %s (40 E, 30 B)", selSp));
                         btnSeed.setBackground(new Color(130, 50, 170));
@@ -1952,6 +2163,13 @@ public class HarvestGUI extends JFrame {
             } else {
                 btnAdvance.setText("⏳ ADVANCE EPOCH (+5,000 Y)");
             }
+        }
+
+        // Update Cargo Hold Button occupancy
+        if (btnCargoHold != null && state != null && state.getCargoHold() != null) {
+            btnCargoHold.setText(String.format("📦 Cargo (%d/%d)",
+                    state.getCargoHold().getOccupiedCount(),
+                    state.getCargoHold().getCapacity()));
         }
 
         updateSeedingIntel();
@@ -2217,17 +2435,12 @@ public class HarvestGUI extends JFrame {
         sb.append("  • Save your campaign across 5 distinct Save Slots in addition to the automatic checkpoint slot,\n");
         sb.append("    allowing you to load back to any point if you make a mistake or face unexpected resistance!\n");
 
-        JTextArea area = new JTextArea(sb.toString(), 25, 75);
-        area.setEditable(false);
-        area.setFont(new Font("Monospaced", Font.PLAIN, 12));
-        area.setBackground(new Color(15, 20, 30));
-        area.setForeground(new Color(220, 245, 255));
-        JOptionPane.showMessageDialog(this, new JScrollPane(area), "Galactic Agronomy & Crop Almanac", JOptionPane.PLAIN_MESSAGE);
+        showLargeStyledDialog("Galactic Agronomy Almanac", "🌱 GALACTIC AGRONOMY & ORGANIC CROP ALMANAC", sb.toString(), 1020, 750);
     }
 
     private void showBioBankGenomeDialog() {
         final JDialog dlg = new JDialog(this, "Reaper Dark Space Bio-Banks // 15-Genome Archive", true);
-        dlg.setSize(840, 600);
+        dlg.setSize(980, 760);
         dlg.setLocationRelativeTo(this);
 
         JPanel content = new JPanel(new BorderLayout(8, 8));
@@ -2254,7 +2467,7 @@ public class HarvestGUI extends JFrame {
 
         content.add(header, BorderLayout.NORTH);
 
-        JPanel gridPanel = new JPanel(new GridLayout(0, 2, 8, 8));
+        JPanel gridPanel = new JPanel(new GridLayout(0, 3, 8, 8));
         gridPanel.setOpaque(false);
 
         for (final String sp : ALL_SPECIES) {
@@ -2276,7 +2489,7 @@ public class HarvestGUI extends JFrame {
             nameLbl.setFont(new Font("SansSerif", Font.BOLD, 12));
             nameLbl.setForeground(sequenced ? new Color(0, 255, 140) : Color.WHITE);
 
-            JLabel traitLbl = new JLabel("<html><body style='width: 230px;'>Trait: " + c.getRacialTrait() + "</body></html>");
+            JLabel traitLbl = new JLabel("<html><body style='width: 175px;'>Trait: " + c.getRacialTrait() + "</body></html>");
             traitLbl.setFont(new Font("SansSerif", Font.PLAIN, 10));
             traitLbl.setForeground(new Color(170, 190, 210));
 

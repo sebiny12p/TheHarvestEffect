@@ -5,7 +5,10 @@ import com.seb.harvesteffect.model.civilization.*;
 import com.seb.harvesteffect.model.entity.BiomechanicalUnit;
 import com.seb.harvesteffect.model.entity.Civilization;
 import com.seb.harvesteffect.model.entity.StarSystem;
+import com.seb.harvesteffect.model.item.FleetComponent;
+import com.seb.harvesteffect.model.item.GenesisProbe;
 import com.seb.harvesteffect.model.item.HarvestYield;
+import com.seb.harvesteffect.model.item.Resource;
 import com.seb.harvesteffect.model.unit.CollectorDrone;
 import com.seb.harvesteffect.model.unit.HuskSwarm;
 import com.seb.harvesteffect.model.unit.ScionBehemoth;
@@ -35,6 +38,9 @@ public class ReaperEngine implements Serializable {
     public ReaperEngine(GalacticState state) {
         this.state = state;
         this.nexus = new CitadelNexus();
+        if (this.state != null) {
+            this.state.setCitadelNexus(this.nexus);
+        }
         this.techTree = new TechTree();
         this.campaign = new CampaignManager();
         this.missionManager = new MissionManager();
@@ -137,19 +143,50 @@ public class ReaperEngine implements Serializable {
 
         String clean = speciesKey.toLowerCase().trim();
         boolean unlockedByStory = (missionManager != null && missionManager.isSpeciesUnlocked(clean, this));
-        if (enforceGenomeResearch && !isGenomeSequenced(clean) && !unlockedByStory) {
-            throw new ReaperException(String.format(
-                    "Genome for %s is unsequenced in Reaper archives! Research its genome in the Bio-Banks before planting.",
-                    speciesKey));
+
+        // Check if player has a matching GenesisProbe loaded in flagship cargo hold
+        int matchingProbeSlot = -1;
+        if (state.getCargoHold() != null) {
+            List<Resource> manifest = state.getCargoHold().getManifest();
+            for (int i = 0; i < manifest.size(); i++) {
+                Resource r = manifest.get(i);
+                if (r instanceof GenesisProbe) {
+                    GenesisProbe gp = (GenesisProbe) r;
+                    if (gp.getTargetSpecies().equalsIgnoreCase(clean)) {
+                        matchingProbeSlot = i;
+                        break;
+                    }
+                }
+            }
+        }
+
+        boolean usedProbeFromCargo = false;
+        if (matchingProbeSlot != -1) {
+            // Deploy and consume probe directly from flagship cargo
+            state.getCargoHold().retrieve(matchingProbeSlot);
+            usedProbeFromCargo = true;
+            // Physical Genesis Probe zygotes unlock & sequence the genome
+            if (!isGenomeSequenced(clean)) {
+                addSequencedGenome(clean);
+            }
+        } else {
+            if (enforceGenomeResearch && !isGenomeSequenced(clean) && !unlockedByStory) {
+                throw new ReaperException(String.format(
+                        "Genome for %s is unsequenced in Reaper archives! Requisition a Genesis Probe or research its genome in Bio-Banks.",
+                        speciesKey));
+            }
         }
 
         Civilization civ = createCivilization(speciesKey);
-        if (chargeCost) {
+        if (chargeCost && !usedProbeFromCargo) {
             int cost = civ.getSeedingCost();
             if (state.getEezoReserves() < cost) {
                 throw new InsufficientEezoException(cost, state.getEezoReserves());
             }
             state.deductEezo(cost);
+        } else if (usedProbeFromCargo) {
+            // Genesis Probe Incubation Boost: accelerates initial cellular colonization
+            civ.grow(1.25);
         }
         system.deployCivilization(civ);
         campaign.checkObjectiveProgress(state, techTree);
@@ -238,6 +275,11 @@ public class ReaperEngine implements Serializable {
                 barrierBreached = true;
                 civ.disableKineticBarrier();
             }
+            // Fleet Components in cargo: Cyclonic Kinetic Barrier or Thanix Cannon breaches defenses
+            if (state.hasFleetComponent("barrier") || state.hasFleetComponent("thanix")) {
+                barrierBreached = true;
+                civ.disableKineticBarrier();
+            }
             if (!barrierBreached) {
                 throw new CivilizationBarrierException(civ.getSpeciesName());
             }
@@ -294,6 +336,14 @@ public class ReaperEngine implements Serializable {
         if (state.getFlagshipSector() == sector && state.getFlagshipCluster() == cluster) {
             darkEnergy = (int) (darkEnergy * 1.20);
             biomass = (int) (biomass * 1.20);
+        }
+
+        // Fleet Components in Cargo Yield Amplification
+        if (state.hasFleetComponent("thanix")) {
+            darkEnergy = (int) (darkEnergy * 1.30);
+        }
+        if (state.hasFleetComponent("occular") || state.hasFleetComponent("laser")) {
+            biomass = (int) (biomass * 1.25);
         }
 
         HarvestYield yield = new HarvestYield(baseYield.getOriginSpecies(), biomass, darkEnergy);
@@ -383,6 +433,10 @@ public class ReaperEngine implements Serializable {
         int cost = 0;
         if (!sys.isRelayBeamActive()) {
             cost = relayDiscount ? 15 : 25;
+            // Fleet Components in cargo: Occular laser guidance and Sovereign armor optimize sub-light jump thrusters
+            if (state.hasFleetComponent("occular") || state.getInstalledFleetArmorIntegrity() > 100) {
+                cost = Math.max(5, cost / 2);
+            }
             if (state.getEezoReserves() < cost) {
                 throw new InsufficientEezoException(cost, state.getEezoReserves());
             }
@@ -390,6 +444,10 @@ public class ReaperEngine implements Serializable {
         }
         state.moveFlagship(targetSector, targetCluster, false);
         return cost;
+    }
+
+    public boolean hasGenesisProbeInCargo(String speciesKey) {
+        return state.hasGenesisProbe(speciesKey);
     }
 
     public int relocateFlagship(int targetSector, int targetCluster) throws InsufficientEezoException {

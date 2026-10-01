@@ -34,7 +34,7 @@ public class FrequencyDecoderDialog extends JDialog {
         this.state = state;
 
         buildUI();
-        setSize(700, 620);
+        setSize(840, 680);
         setLocationRelativeTo(parent);
     }
 

@@ -5,6 +5,8 @@ import com.seb.harvesteffect.engine.CampaignManager;
 import com.seb.harvesteffect.engine.CitadelNexus;
 import com.seb.harvesteffect.engine.GalacticState;
 import com.seb.harvesteffect.engine.TechTree;
+import com.seb.harvesteffect.model.item.FleetComponent;
+import com.seb.harvesteffect.model.item.GenesisProbe;
 import com.seb.harvesteffect.model.item.Resource;
 import java.awt.*;
 import java.awt.event.ActionEvent;
@@ -16,7 +18,7 @@ import javax.swing.*;
 /**
  * Interactive Citadel Nexus Mega-Structure Dashboard.
  * Allows upgrading the Citadel across 5 tiers, triggering the Arms Lockdown defense grid,
- * and requisitioning Genesis Probes and Armada components.
+ * requisitioning Genesis Probes and Armada components, and liquidating flagship cargo.
  */
 public class CitadelNexusDialog extends JDialog {
     private final CitadelNexus nexus;
@@ -33,16 +35,22 @@ public class CitadelNexusDialog extends JDialog {
     private JLabel lblItemCost;
     private JButton btnPurchase;
 
+    // Cargo Manifest & Liquidation Bay Components
+    private JComboBox<String> cmbCargo;
+    private JLabel lblCargoStatus;
+    private JButton btnLiquidate;
+    private JButton btnEject;
+
     public CitadelNexusDialog(JFrame parent, CitadelNexus nexus, GalacticState state,
                               TechTree techTree, CampaignManager campaign) {
-        super(parent, "Dark Space Citadel Nexus // Mega-Structure Control", true);
+        super(parent, "Dark Space Citadel Nexus // Mega-Structure Control & Commerce Hub", true);
         this.nexus = nexus;
         this.state = state;
         this.techTree = techTree;
         this.campaign = campaign;
 
         buildUI();
-        setSize(780, 680);
+        setSize(960, 740);
         setLocationRelativeTo(parent);
     }
 
@@ -168,6 +176,60 @@ public class CitadelNexusDialog extends JDialog {
         catalogPod.add(reqGrid, BorderLayout.CENTER);
         centerPanel.add(catalogPod);
 
+        centerPanel.add(Box.createVerticalStrut(10));
+
+        // Flagship Cargo Manifest & Commerce Liquidation Pod
+        JPanel cargoPod = new JPanel(new BorderLayout(8, 8));
+        cargoPod.setBackground(new Color(18, 24, 32));
+        cargoPod.setBorder(BorderFactory.createTitledBorder(
+                BorderFactory.createLineBorder(new Color(0, 230, 150)),
+                "FLAGSHIP CARGO PODS & COMMERCE LIQUIDATION BAY", 0, 0,
+                new Font("Monospaced", Font.BOLD, 12), new Color(0, 255, 170)));
+
+        lblCargoStatus = new JLabel("CARGO PODS: Loading...", SwingConstants.CENTER);
+        lblCargoStatus.setFont(new Font("Monospaced", Font.BOLD, 11));
+        lblCargoStatus.setForeground(new Color(180, 240, 210));
+
+        cmbCargo = new JComboBox<String>();
+        cmbCargo.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        cmbCargo.setBackground(new Color(20, 30, 35));
+        cmbCargo.setForeground(Color.WHITE);
+
+        btnLiquidate = new JButton("⚡ Liquidate Selected Asset (+Eezo)");
+        btnLiquidate.setFont(new Font("SansSerif", Font.BOLD, 12));
+        btnLiquidate.setBackground(new Color(0, 150, 100));
+        btnLiquidate.setForeground(Color.WHITE);
+        btnLiquidate.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                liquidateItemAction();
+            }
+        });
+
+        btnEject = new JButton("🗑️ Eject Pod (Discard)");
+        btnEject.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        btnEject.setBackground(new Color(60, 40, 45));
+        btnEject.setForeground(Color.WHITE);
+        btnEject.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                ejectItemAction();
+            }
+        });
+
+        JPanel cargoBtnGrid = new JPanel(new GridLayout(1, 2, 6, 6));
+        cargoBtnGrid.setOpaque(false);
+        cargoBtnGrid.add(btnLiquidate);
+        cargoBtnGrid.add(btnEject);
+
+        JPanel cargoGrid = new JPanel(new GridLayout(3, 1, 4, 4));
+        cargoGrid.setOpaque(false);
+        cargoGrid.add(lblCargoStatus);
+        cargoGrid.add(cmbCargo);
+        cargoGrid.add(cargoBtnGrid);
+        cargoPod.add(cargoGrid, BorderLayout.CENTER);
+        centerPanel.add(cargoPod);
+
         content.add(centerPanel, BorderLayout.CENTER);
 
         // 3. Footer
@@ -234,6 +296,62 @@ public class CitadelNexusDialog extends JDialog {
             btnArmsLockdown.setEnabled(true);
             btnArmsLockdown.setBackground(new Color(200, 30, 30));
         }
+
+        // Refresh Cargo Bay Manifest & Liquidation Pod
+        if (cmbCargo != null) {
+            cmbCargo.removeAllItems();
+            List<Resource> manifest = state.getCargoHold().getManifest();
+            for (int i = 0; i < manifest.size(); i++) {
+                Resource r = manifest.get(i);
+                String role = "";
+                if (r instanceof GenesisProbe) {
+                    role = " [Deploy on world: Cost Waived & +25% Incubation]";
+                } else if (r instanceof FleetComponent) {
+                    role = String.format(" [Flagship Subsystem: +%d Armor]", ((FleetComponent) r).getArmorBuff());
+                } else {
+                    role = " [Ascension Bio-Extract: Liquidate for Eezo]";
+                }
+                cmbCargo.addItem(String.format("Pod %02d: %s (Value: %d Eezo)%s", i + 1, r.getItemName(), r.getEezoValue(), role));
+            }
+            boolean hasCargo = !manifest.isEmpty();
+            btnLiquidate.setEnabled(hasCargo);
+            btnEject.setEnabled(hasCargo);
+            lblCargoStatus.setText(String.format("CARGO BAYS: %d/%d Pods Occupied  |  SOVEREIGN HULL ARMOR: %d Integrity",
+                    state.getCargoHold().getOccupiedCount(), state.getCargoHold().getCapacity(),
+                    state.getInstalledFleetArmorIntegrity()));
+        }
+    }
+
+    private void liquidateItemAction() {
+        if (cmbCargo == null || cmbCargo.getSelectedIndex() < 0) return;
+        int slot = cmbCargo.getSelectedIndex();
+        try {
+            int eezoEarned = nexus.liquidateAsset(slot, state);
+            SoundEffects.playUiClick();
+            JOptionPane.showMessageDialog(this,
+                    String.format("ASSET LIQUIDATED!\n\nPod %d successfully converted into %d Eezo.\nUpdated Reserves: %d Eezo",
+                            slot + 1, eezoEarned, state.getEezoReserves()),
+                    "Liquidation Complete", JOptionPane.INFORMATION_MESSAGE);
+            updateUIState();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Liquidation Failed", JOptionPane.WARNING_MESSAGE);
+        }
+    }
+
+    private void ejectItemAction() {
+        if (cmbCargo == null || cmbCargo.getSelectedIndex() < 0) return;
+        int slot = cmbCargo.getSelectedIndex();
+        try {
+            Resource r = state.getCargoHold().retrieve(slot);
+            SoundEffects.playUiClick();
+            JOptionPane.showMessageDialog(this,
+                    String.format("CARGO EJECTED!\n\nJettisoned '%s' into dark space.\nPod %d is now empty.",
+                            r.getItemName(), slot + 1),
+                    "Cargo Pod Ejected", JOptionPane.INFORMATION_MESSAGE);
+            updateUIState();
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Ejection Failed", JOptionPane.WARNING_MESSAGE);
+        }
     }
 
     private void upgradeCitadelAction() {
@@ -270,7 +388,7 @@ public class CitadelNexusDialog extends JDialog {
             Resource r = nexus.purchaseItem(itemKey, state);
             SoundEffects.playUiClick();
             JOptionPane.showMessageDialog(this,
-                    "Requisitioned: " + r.getItemName() + " stored in Cargo Hold.\nRemaining Eezo: " + state.getEezoReserves(),
+                    "Requisitioned: " + r.getItemName() + " stored in Flagship Cargo Hold.\nRemaining Eezo: " + state.getEezoReserves(),
                     "Requisition Successful", JOptionPane.INFORMATION_MESSAGE);
             updateUIState();
         } catch (Exception ex) {

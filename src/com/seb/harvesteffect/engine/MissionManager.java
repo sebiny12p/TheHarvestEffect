@@ -467,7 +467,7 @@ public class MissionManager {
                     }
                     if (droneFound) current.advanceTask();
                 }
-                if (totalAscensions >= 3) {
+                if (totalAscensions >= 6) {
                     while (!current.isCompleted()) {
                         current.advanceTask();
                     }
@@ -484,7 +484,7 @@ public class MissionManager {
                     boolean indoctrinationUnlocked = techTree != null && techTree.isUnlocked("indoctrination_emitter");
                     if (indoctrinationUnlocked) current.advanceTask();
                 }
-                if (totalAscensions >= 4) {
+                if (totalAscensions >= 9) {
                     while (!current.isCompleted()) {
                         current.advanceTask();
                     }
@@ -510,7 +510,7 @@ public class MissionManager {
                     }
                     if (sector3RelayActive) current.advanceTask();
                 }
-                if (totalAscensions >= 6) {
+                if (totalAscensions >= 12) {
                     while (!current.isCompleted()) {
                         current.advanceTask();
                     }

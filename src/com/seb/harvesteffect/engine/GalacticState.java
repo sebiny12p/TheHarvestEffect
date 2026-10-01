@@ -5,6 +5,8 @@ import com.seb.harvesteffect.model.entity.Civilization;
 import com.seb.harvesteffect.model.entity.GalacticSector;
 import com.seb.harvesteffect.model.entity.StarSystem;
 import com.seb.harvesteffect.model.item.CargoHold;
+import com.seb.harvesteffect.model.item.FleetComponent;
+import com.seb.harvesteffect.model.item.GenesisProbe;
 import com.seb.harvesteffect.model.item.Resource;
 
 /**
@@ -204,6 +206,60 @@ public class GalacticState {
         return cargoHold;
     }
 
+    public boolean hasGenesisProbe(String speciesKey) {
+        if (cargoHold == null || speciesKey == null) return false;
+        String clean = speciesKey.toLowerCase().trim();
+        for (Resource r : cargoHold.getManifest()) {
+            if (r instanceof GenesisProbe) {
+                GenesisProbe gp = (GenesisProbe) r;
+                if (gp.getTargetSpecies().equalsIgnoreCase(clean)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public int getGenesisProbeCount(String speciesKey) {
+        if (cargoHold == null || speciesKey == null) return 0;
+        String clean = speciesKey.toLowerCase().trim();
+        int count = 0;
+        for (Resource r : cargoHold.getManifest()) {
+            if (r instanceof GenesisProbe) {
+                GenesisProbe gp = (GenesisProbe) r;
+                if (gp.getTargetSpecies().equalsIgnoreCase(clean)) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    }
+
+    public boolean hasFleetComponent(String componentKeyword) {
+        if (cargoHold == null || componentKeyword == null) return false;
+        String clean = componentKeyword.toLowerCase().trim();
+        for (Resource r : cargoHold.getManifest()) {
+            if (r instanceof FleetComponent) {
+                FleetComponent fc = (FleetComponent) r;
+                if (fc.getSubsystemName().toLowerCase().contains(clean)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public int getInstalledFleetArmorIntegrity() {
+        int totalArmor = 100; // Base Sovereign capital armor
+        if (cargoHold == null) return totalArmor;
+        for (Resource r : cargoHold.getManifest()) {
+            if (r instanceof FleetComponent) {
+                totalArmor += ((FleetComponent) r).getArmorBuff();
+            }
+        }
+        return totalArmor;
+    }
+
     public CycleEra getCurrentEra() {
         return CycleEra.fromEpoch(cycleEpoch);
     }
@@ -237,5 +293,15 @@ public class GalacticState {
             default:
                 return "Cosmic Winter (Threat Convergence)";
         }
+    }
+
+    private CitadelNexus citadelNexus;
+
+    public CitadelNexus getCitadelNexus() {
+        return citadelNexus;
+    }
+
+    public void setCitadelNexus(CitadelNexus citadelNexus) {
+        this.citadelNexus = citadelNexus;
     }
 }

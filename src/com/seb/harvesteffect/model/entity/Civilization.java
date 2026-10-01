@@ -84,6 +84,16 @@ public abstract class Civilization implements Harvestable, RelayLinked {
         darkEnergyYield = Math.min(350, (int) (darkEnergyYield * (1.10 + (evolutionaryTier * 0.05))));
     }
 
+    /**
+     * Accelerated incubation / growth boost (e.g. from Genesis Probe deployment).
+     */
+    public void grow(double factor) {
+        if (factor > 0) {
+            this.populationBillions = (int) Math.min(20, Math.max(1, Math.round(this.populationBillions * factor)));
+            this.darkEnergyYield = Math.min(350, (int) Math.round(this.darkEnergyYield * factor));
+        }
+    }
+
     public int getColonizationTimer() {
         return colonizationTimer;
     }

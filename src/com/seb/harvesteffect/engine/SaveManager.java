@@ -64,6 +64,7 @@ public class SaveManager {
         public int totalAscensions;
         public boolean campaignVictory;
         public boolean crucibleDefeat;
+        public boolean victoryAcknowledged;
         public int activeMissionIndex;
         public int activeTaskIndex;
         public int historicalCycleCount;
@@ -276,6 +277,7 @@ public class SaveManager {
         state.totalAscensions = cm.getTotalAscensions();
         state.campaignVictory = cm.isCampaignVictory();
         state.crucibleDefeat = cm.isCrucibleDefeat();
+        state.victoryAcknowledged = cm.isVictoryAcknowledged();
         state.activeMissionIndex = engine.getMissionManager().getActiveMissionIndex();
         state.activeTaskIndex = engine.getMissionManager().getActiveMission().getCurrentTaskIndex();
         state.historicalCycleCount = engine.getMissionManager().getHistoricalCycleCount();
@@ -446,7 +448,7 @@ public class SaveManager {
             try {
                 CampaignManager.Act act = CampaignManager.Act.valueOf(s.currentAct);
                 engine.getCampaign().restoreState(act, s.tutorialStep, s.crucibleProgress,
-                        s.totalAscensions, s.campaignVictory, s.crucibleDefeat);
+                        s.totalAscensions, s.campaignVictory, s.crucibleDefeat, s.victoryAcknowledged);
             } catch (Exception ignored) {}
         }
 
