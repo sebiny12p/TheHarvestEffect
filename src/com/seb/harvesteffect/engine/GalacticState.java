@@ -7,6 +7,7 @@ import com.seb.harvesteffect.model.entity.StarSystem;
 import com.seb.harvesteffect.model.item.CargoHold;
 import com.seb.harvesteffect.model.item.FleetComponent;
 import com.seb.harvesteffect.model.item.GenesisProbe;
+import com.seb.harvesteffect.model.item.HarvestYield;
 import com.seb.harvesteffect.model.item.Resource;
 
 /**
@@ -175,6 +176,31 @@ public class GalacticState {
         if (cargoHold != null) {
             cargoHold.setCapacity(capacity);
         }
+    }
+
+    public int countCargoSpecimens() {
+        if (cargoHold == null) return 0;
+        int count = 0;
+        for (Resource r : cargoHold.getManifest()) {
+            if (r instanceof HarvestYield) {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    public boolean consumeCargoSpecimens(int count) {
+        if (cargoHold == null || count <= 0) return true;
+        if (countCargoSpecimens() < count) return false;
+        int consumed = 0;
+        for (int i = cargoHold.getOccupiedCount() - 1; i >= 0 && consumed < count; i--) {
+            Resource r = cargoHold.getManifest().get(i);
+            if (r instanceof HarvestYield) {
+                cargoHold.retrieve(i);
+                consumed++;
+            }
+        }
+        return consumed == count;
     }
 
     public void advanceEpoch(GalacticPhenomenon phenomenon) {

@@ -601,7 +601,7 @@ public class Main {
         } else {
             for (int i = 0; i < items.size(); i++) {
                 Resource r = items.get(i);
-                System.out.printf("  Pod [%2d] %-30s | %4d Mass | Value: %d Eezo%n",
+                System.out.printf("  Pod [%2d] %-30s | %4d Mass | Salvage: %d Eezo (Needed for Apex Tech)%n",
                         i, r.getItemName(), r.getMassUnits(), r.getEezoValue());
             }
         }

@@ -328,9 +328,9 @@ public class CitadelNexusDialog extends JDialog {
                 } else if (r instanceof FleetComponent) {
                     role = String.format(" [Flagship Subsystem: +%d Armor]", ((FleetComponent) r).getArmorBuff());
                 } else {
-                    role = " [Ascension Bio-Extract: Liquidate for Eezo]";
+                    role = " [Genetic Specimen: Reclaim for 15 Eezo salvage | Preserved for Apex Research]";
                 }
-                cmbCargo.addItem(String.format("Pod %02d: %s (Value: %d Eezo)%s", i + 1, r.getItemName(), r.getEezoValue(), role));
+                cmbCargo.addItem(String.format("Pod %02d: %s (Salvage: %d Eezo)%s", i + 1, r.getItemName(), r.getEezoValue(), role));
             }
             boolean hasCargo = !manifest.isEmpty();
             btnLiquidate.setEnabled(hasCargo);
@@ -348,9 +348,9 @@ public class CitadelNexusDialog extends JDialog {
             int eezoEarned = nexus.liquidateAsset(slot, state);
             SoundEffects.playUiClick();
             JOptionPane.showMessageDialog(this,
-                    String.format("ASSET LIQUIDATED!\n\nPod %d successfully converted into %d Eezo.\nUpdated Reserves: %d Eezo",
+                    String.format("ASSET SALVAGED!\n\nPod %d salvaged for %d Eezo scrap.\nUpdated Reserves: %d Eezo\n(Tip: Keep genetic specimens in cargo to calibrate Apex Tech Tree research!)",
                             slot + 1, eezoEarned, state.getEezoReserves()),
-                    "Liquidation Complete", JOptionPane.INFORMATION_MESSAGE);
+                    "Asset Salvaged", JOptionPane.INFORMATION_MESSAGE);
             updateUIState();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Liquidation Failed", JOptionPane.WARNING_MESSAGE);

@@ -40,6 +40,7 @@ public class TechTree implements Serializable {
         private final Branch branch;
         private final int eezoCost;
         private final int biomassCost;
+        private final int requiredCargoPods;
         private final int requiredMissionIndex;
         private final String requiredCycleName;
         private final String prerequisiteUpgradeId;
@@ -48,12 +49,21 @@ public class TechTree implements Serializable {
         public Upgrade(String id, String name, String description, Branch branch,
                        int eezoCost, int biomassCost, int requiredMissionIndex,
                        String requiredCycleName, String prerequisiteUpgradeId) {
+            this(id, name, description, branch, eezoCost, biomassCost, 0,
+                    requiredMissionIndex, requiredCycleName, prerequisiteUpgradeId);
+        }
+
+        public Upgrade(String id, String name, String description, Branch branch,
+                       int eezoCost, int biomassCost, int requiredCargoPods,
+                       int requiredMissionIndex, String requiredCycleName,
+                       String prerequisiteUpgradeId) {
             this.id = id;
             this.name = name;
             this.description = description;
             this.branch = branch;
             this.eezoCost = eezoCost;
             this.biomassCost = biomassCost;
+            this.requiredCargoPods = requiredCargoPods;
             this.requiredMissionIndex = requiredMissionIndex;
             this.requiredCycleName = requiredCycleName;
             this.prerequisiteUpgradeId = prerequisiteUpgradeId;
@@ -66,6 +76,7 @@ public class TechTree implements Serializable {
         public Branch getBranch() { return branch; }
         public int getEezoCost() { return eezoCost; }
         public int getBiomassCost() { return biomassCost; }
+        public int getRequiredCargoPods() { return requiredCargoPods; }
         public int getRequiredMissionIndex() { return requiredMissionIndex; }
         public String getRequiredCycleName() { return requiredCycleName; }
         public String getPrerequisiteUpgradeId() { return prerequisiteUpgradeId; }
@@ -104,17 +115,17 @@ public class TechTree implements Serializable {
         map.put("biomass_vats", new Upgrade(
                 "biomass_vats",
                 "Genetic Synthesis Vats",
-                "Doubles flagship Cargo Hold capacity and increases refined biomass value by +50%.",
+                "Doubles flagship Cargo Hold capacity (to 24) and boosts biomass value by +50%. Requires 1 organic cargo specimen to calibrate synthesis vats.",
                 Branch.EXTINCTION_ARMADA,
-                350, 350, 4, "Act III: The Perseus Veil", "thanix_cannons"
+                350, 350, 1, 4, "Act III: The Perseus Veil", "thanix_cannons"
         ));
 
         map.put("reaper_larva_core", new Upgrade(
                 "reaper_larva_core",
                 "Human-Reaper Larva Matrix",
-                "Apex synthetic dreadnought: increases all harvest yields by +100% and unlocks final victory protocol.",
+                "Apex synthetic dreadnought: doubles harvest yields and unlocks final victory protocol. Requires 2 organic cargo specimens (biomass slurry) to construct larva chassis.",
                 Branch.EXTINCTION_ARMADA,
-                600, 900, 4, "Act IV: The Shadow Rim", "biomass_vats"
+                600, 900, 2, 4, "Act IV: The Shadow Rim", "biomass_vats"
         ));
 
         // ==========================================
@@ -260,17 +271,17 @@ public class TechTree implements Serializable {
         map.put("genome_prothean", new Upgrade(
                 "genome_prothean",
                 "Prothean Genome Sequencing",
-                "Synthesizes Prothean precursor heirloom genome into bio-banks. Returns triple (3.0x) Dark Energy upon Ascension.",
+                "Synthesizes Prothean precursor heirloom genome into bio-banks. Returns triple (3.0x) Dark Energy upon Ascension. Requires 1 organic cargo specimen to sequence precursor DNA.",
                 Branch.BIO_BANK_GENOMES,
-                250, 200, 3, "Act II: The Attican Traverse", null
+                250, 200, 1, 3, "Act II: The Attican Traverse", null
         ));
 
         map.put("genome_yahg", new Upgrade(
                 "genome_yahg",
                 "Yahg Genome Sequencing",
-                "Synthesizes Yahg apex predator genome into bio-banks. Returns massive genetic biomass bulk upon Ascension.",
+                "Synthesizes Yahg apex predator genome into bio-banks. Returns massive genetic biomass bulk upon Ascension. Requires 1 organic cargo specimen to reconstruct muscle matrix.",
                 Branch.BIO_BANK_GENOMES,
-                300, 250, 4, "Act III: The Perseus Veil", null
+                300, 250, 1, 4, "Act III: The Perseus Veil", null
         ));
 
         this.upgrades = Collections.unmodifiableMap(map);
@@ -328,9 +339,17 @@ public class TechTree implements Serializable {
         if (state.getAccumulatedBiomass() < u.getBiomassCost()) {
             throw new InsufficientBiomassException(u.getBiomassCost(), state.getAccumulatedBiomass());
         }
+        if (u.getRequiredCargoPods() > 0 && state.countCargoSpecimens() < u.getRequiredCargoPods()) {
+            throw new IllegalStateException(String.format(
+                    "Specimens Missing: '%s' requires %d Harvested Cargo Specimen pod(s) in Flagship Cargo Hold (Currently in hold: %d).",
+                    u.getName(), u.getRequiredCargoPods(), state.countCargoSpecimens()));
+        }
 
         state.deductEezo(u.getEezoCost());
         state.deductBiomass(u.getBiomassCost());
+        if (u.getRequiredCargoPods() > 0) {
+            state.consumeCargoSpecimens(u.getRequiredCargoPods());
+        }
         u.setUnlocked(true);
 
         if (state.getGalaxyMap() != null) {

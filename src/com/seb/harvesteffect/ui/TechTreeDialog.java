@@ -107,8 +107,8 @@ public class TechTreeDialog extends JDialog {
     }
 
     private void updateReservesLabel() {
-        lblReserves.setText(String.format("FLEET TREASURY: %d Eezo  |  %d Biomass",
-                state.getEezoReserves(), state.getAccumulatedBiomass()));
+        lblReserves.setText(String.format("FLEET TREASURY: %d Eezo  |  %d Biomass  |  %d Cargo Specimen(s)",
+                state.getEezoReserves(), state.getAccumulatedBiomass(), state.countCargoSpecimens()));
     }
 
     private JPanel createBranchPanel(final TechTree.Branch branch) {
@@ -150,8 +150,11 @@ public class TechTreeDialog extends JDialog {
             lblDescription.setForeground(new Color(180, 200, 220));
 
             StringBuilder reqSb = new StringBuilder();
-            reqSb.append(String.format("Cost: %d Eezo, %d Biomass  |  Era: %s",
-                    u.getEezoCost(), u.getBiomassCost(), u.getRequiredCycleName()));
+            reqSb.append(String.format("Cost: %d Eezo, %d Biomass", u.getEezoCost(), u.getBiomassCost()));
+            if (u.getRequiredCargoPods() > 0) {
+                reqSb.append(String.format(", %d Cargo Specimen(s)", u.getRequiredCargoPods()));
+            }
+            reqSb.append(String.format("  |  Era: %s", u.getRequiredCycleName()));
             if (u.getPrerequisiteUpgradeId() != null) {
                 TechTree.Upgrade prereq = techTree.getUpgrade(u.getPrerequisiteUpgradeId());
                 String pName = (prereq != null) ? prereq.getName() : u.getPrerequisiteUpgradeId();
@@ -177,6 +180,7 @@ public class TechTreeDialog extends JDialog {
             boolean eraOk = u.isAvailableInMission(activeMission);
             boolean prereqOk = (u.getPrerequisiteUpgradeId() == null || techTree.isUnlocked(u.getPrerequisiteUpgradeId()));
             boolean affordOk = state.getEezoReserves() >= u.getEezoCost() && state.getAccumulatedBiomass() >= u.getBiomassCost();
+            boolean cargoOk = (u.getRequiredCargoPods() == 0 || state.countCargoSpecimens() >= u.getRequiredCargoPods());
 
             JButton btnAction = new JButton();
             btnAction.setFont(new Font("SansSerif", Font.BOLD, 11));
@@ -201,8 +205,18 @@ public class TechTreeDialog extends JDialog {
                 btnAction.setEnabled(false);
                 btnAction.setBackground(new Color(60, 30, 35));
                 btnAction.setForeground(new Color(200, 140, 140));
+            } else if (!cargoOk) {
+                btnAction.setText("NEED CARGO SPECIMEN");
+                btnAction.setEnabled(false);
+                btnAction.setBackground(new Color(65, 35, 25));
+                btnAction.setForeground(new Color(255, 170, 120));
             } else {
-                btnAction.setText(String.format("RESEARCH (-%d Eezo, -%d Bio)", u.getEezoCost(), u.getBiomassCost()));
+                if (u.getRequiredCargoPods() > 0) {
+                    btnAction.setText(String.format("RESEARCH (-%d E, -%d B, -%d Pod)",
+                            u.getEezoCost(), u.getBiomassCost(), u.getRequiredCargoPods()));
+                } else {
+                    btnAction.setText(String.format("RESEARCH (-%d Eezo, -%d Bio)", u.getEezoCost(), u.getBiomassCost()));
+                }
                 btnAction.setEnabled(true);
                 btnAction.setBackground(new Color(0, 140, 220));
                 btnAction.setForeground(Color.WHITE);

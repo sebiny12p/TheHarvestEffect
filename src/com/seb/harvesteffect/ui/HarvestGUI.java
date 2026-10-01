@@ -1769,7 +1769,7 @@ public class HarvestGUI extends JFrame {
                 type = String.format(" [FLEET SUBSYSTEM: +%d Armor, Breaches Barriers, Yield Boost]",
                         ((com.seb.harvesteffect.model.item.FleetComponent) r).getArmorBuff());
             } else {
-                type = String.format(" [ASCENSION YIELD: %d Biomass / %d Eezo Value]", r.getMassUnits(), r.getEezoValue());
+                type = String.format(" [GENETIC SPECIMEN: %d Biomass | %d Eezo Salvage Scrap | Needed for Apex Tech]", r.getMassUnits(), r.getEezoValue());
             }
             listModel.addElement(String.format("Pod %02d: %-28s | %s", i + 1, r.getItemName(), type));
         }
@@ -1789,7 +1789,7 @@ public class HarvestGUI extends JFrame {
         JPanel btnRow = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 4));
         btnRow.setOpaque(false);
 
-        JButton btnLiquidate = new JButton("⚡ Liquidate Selected Asset (+Eezo)");
+        JButton btnLiquidate = new JButton("⚡ Salvage Selected Asset (+Eezo Scrap)");
         btnLiquidate.setFont(new Font("SansSerif", Font.BOLD, 12));
         btnLiquidate.setBackground(new Color(0, 150, 100));
         btnLiquidate.setForeground(Color.WHITE);
@@ -1804,9 +1804,9 @@ public class HarvestGUI extends JFrame {
                 int earned = engine.getNexus().liquidateAsset(idx, state);
                 SoundEffects.playUiClick();
                 JOptionPane.showMessageDialog(dlg,
-                        String.format("Pod %d converted into %d Eezo.\nUpdated Reserves: %d Eezo",
+                        String.format("Pod %d salvaged for %d Eezo scrap.\nUpdated Reserves: %d Eezo\n(Tip: Keep genetic specimens in cargo to calibrate Apex Tech Tree research!)",
                                 idx + 1, earned, state.getEezoReserves()),
-                        "Asset Liquidated", JOptionPane.INFORMATION_MESSAGE);
+                        "Asset Salvaged", JOptionPane.INFORMATION_MESSAGE);
                 dlg.dispose();
                 updateDisplay();
                 showCargoHoldDialog();
@@ -2731,8 +2731,8 @@ public class HarvestGUI extends JFrame {
         lblTitle.setForeground(new Color(0, 230, 255));
         header.add(lblTitle, BorderLayout.WEST);
 
-        JLabel lblTreasury = new JLabel(String.format("Fleet Treasury: %d Eezo  |  %d Biomass",
-                state.getEezoReserves(), state.getAccumulatedBiomass()), SwingConstants.RIGHT);
+        JLabel lblTreasury = new JLabel(String.format("Fleet Treasury: %d Eezo  |  %d Biomass  |  %d Specimen(s)",
+                state.getEezoReserves(), state.getAccumulatedBiomass(), state.countCargoSpecimens()), SwingConstants.RIGHT);
         lblTreasury.setFont(new Font("Monospaced", Font.BOLD, 12));
         lblTreasury.setForeground(new Color(255, 215, 0));
         header.add(lblTreasury, BorderLayout.EAST);
@@ -2777,6 +2777,7 @@ public class HarvestGUI extends JFrame {
             boolean isStorySpecies = missionManager.isSpeciesUnlocked(sp);
             int reqE = engine.getGenomeEezoCost(sp);
             int reqB = engine.getGenomeBiomassCost(sp);
+            int reqPods = engine.getGenomeRequiredCargoPods(sp);
 
             if (sequenced || isStorySpecies) {
                 btnAction.setText(isStorySpecies ? "✓ STORY UNLOCKED" : "✓ RESEARCHED");
@@ -2785,9 +2786,23 @@ public class HarvestGUI extends JFrame {
                 btnAction.setForeground(new Color(180, 255, 200));
             } else {
                 boolean afford = state.getEezoReserves() >= reqE && state.getAccumulatedBiomass() >= reqB;
-                btnAction.setText(String.format("RESEARCH (-%d E, -%d B)", reqE, reqB));
-                btnAction.setEnabled(afford);
-                btnAction.setBackground(afford ? new Color(130, 50, 170) : new Color(50, 35, 45));
+                boolean hasPods = (reqPods == 0 || state.countCargoSpecimens() >= reqPods);
+                if (!afford) {
+                    btnAction.setText(String.format("NEED RES (-%d E,-%d B)", reqE, reqB));
+                    btnAction.setEnabled(false);
+                    btnAction.setBackground(new Color(50, 35, 45));
+                } else if (!hasPods) {
+                    btnAction.setText(String.format("NEED %d SPECIMEN", reqPods));
+                    btnAction.setEnabled(false);
+                    btnAction.setBackground(new Color(65, 35, 25));
+                } else {
+                    String costStr = reqPods > 0
+                            ? String.format("RESEARCH (-%d E, -%d B, -%d Pod)", reqE, reqB, reqPods)
+                            : String.format("RESEARCH (-%d E, -%d B)", reqE, reqB);
+                    btnAction.setText(costStr);
+                    btnAction.setEnabled(true);
+                    btnAction.setBackground(new Color(130, 50, 170));
+                }
                 btnAction.setForeground(Color.WHITE);
                 btnAction.addActionListener(new ActionListener() {
                     @Override

@@ -63,6 +63,7 @@ public class HarvestEffectTestSuite {
         testSovereignMovementConstraintDroneSpecializationAndCrucibleWiping();
         testStoryUnlockedSpeciesGenomeSequencingReconciliation();
         testDroneRelocationAndDismantling();
+        testCargoSpecimenResearchRequirementsAndSalvageLiquidation();
 
         System.out.println("==============================================================");
         System.out.printf("Test Results: %d/%d tests passed successfully!%n", passedTests, totalTests);
@@ -1913,5 +1914,101 @@ public class HarvestEffectTestSuite {
             emptyDismantleBlocked = true;
         }
         assertTrue("Dismantling on empty star system throws ReaperException", emptyDismantleBlocked);
+    }
+
+    private static void testCargoSpecimenResearchRequirementsAndSalvageLiquidation() {
+        System.out.println("\n[Test 44: Cargo Specimen Research Requirements & Trivial Salvage Liquidation]");
+
+        // 1. Verify trivial salvage constants across cargo resource types
+        HarvestYield sample = new HarvestYield("Humanity", 180, 260);
+        assertTrue("HarvestYield salvage Eezo is trivial 15", sample.getEezoValue() == 15);
+        assertTrue("HarvestYield darkEnergyYield retains harvest value (260)", sample.getDarkEnergyYield() == 260);
+        assertTrue("GenesisProbe salvage Eezo is trivial 20", GenesisProbe.TRIVIAL_SALVAGE_EEZO == 20);
+        assertTrue("FleetComponent salvage Eezo is trivial 25", FleetComponent.TRIVIAL_SALVAGE_EEZO == 25);
+
+        // 2. Test liquidating cargo via CitadelNexus yields trivial 15 Eezo
+        GalacticState state = new GalacticState("Sovereign", "Test Cycle");
+        state.setEezoReserves(100);
+        try {
+            state.getCargoHold().store(sample);
+            state.getCargoHold().store(new GenesisProbe("Asari"));
+            state.getCargoHold().store(new FleetComponent("Hull Plating", 2, 50));
+        } catch (Exception e) {
+            assertTrue("Storing resources failed: " + e.getMessage(), false);
+        }
+        assertTrue("Cargo hold occupied count is 3", state.getCargoHold().getOccupiedCount() == 3);
+        assertTrue("countCargoSpecimens only counts HarvestYields (1)", state.countCargoSpecimens() == 1);
+
+        CitadelNexus nexus = new CitadelNexus();
+        int eezoBefore = state.getEezoReserves();
+        int liquidatedEezo = nexus.liquidateAsset(0, state);
+        assertTrue("Liquidating HarvestYield returns exactly 15 Eezo", liquidatedEezo == 15);
+        assertTrue("State Eezo credited +15 salvage Eezo", state.getEezoReserves() == eezoBefore + 15);
+        assertTrue("Cargo hold occupied count decreased to 2", state.getCargoHold().getOccupiedCount() == 2);
+        assertTrue("countCargoSpecimens is now 0 after liquidating specimen", state.countCargoSpecimens() == 0);
+
+        // 3. Test TechTree Upgrade cargo pod requirements
+        TechTree tree = new TechTree();
+        assertTrue("biomass_vats requires 1 cargo specimen", tree.getUpgrade("biomass_vats").getRequiredCargoPods() == 1);
+        assertTrue("reaper_larva_core requires 2 cargo specimens", tree.getUpgrade("reaper_larva_core").getRequiredCargoPods() == 2);
+        assertTrue("genome_prothean requires 1 cargo specimen", tree.getUpgrade("genome_prothean").getRequiredCargoPods() == 1);
+        assertTrue("genome_yahg requires 1 cargo specimen", tree.getUpgrade("genome_yahg").getRequiredCargoPods() == 1);
+        assertTrue("scion_amplifier requires 0 cargo specimens", tree.getUpgrade("scion_amplifier").getRequiredCargoPods() == 0);
+
+        // 4. Verify unlockUpgrade blocks research when cargo specimen is missing
+        state.setEezoReserves(1000);
+        state.setAccumulatedBiomass(1000);
+        boolean blockedWithoutSpecimen = false;
+        try {
+            tree.unlockUpgrade("genome_prothean", state, 4);
+        } catch (IllegalStateException ise) {
+            blockedWithoutSpecimen = ise.getMessage().contains("Specimens Missing");
+        } catch (Exception e) {
+            assertTrue("Unexpected exception: " + e.getMessage(), false);
+        }
+        assertTrue("Unlocking genome_prothean without cargo specimen throws 'Specimens Missing' exception", blockedWithoutSpecimen);
+
+        // 5. Storing specimen allows unlocking and consumes the specimen
+        try {
+            state.getCargoHold().store(new HarvestYield("Prothean Heritage", 100, 100));
+        } catch (Exception e) {
+            assertTrue("Storing specimen failed: " + e.getMessage(), false);
+        }
+        assertTrue("State has 1 cargo specimen", state.countCargoSpecimens() == 1);
+
+        try {
+            tree.unlockUpgrade("genome_prothean", state, 4);
+            assertTrue("genome_prothean is now unlocked", tree.isUnlocked("genome_prothean"));
+            assertTrue("Unlocking consumed cargo specimen (now 0)", state.countCargoSpecimens() == 0);
+        } catch (Exception e) {
+            assertTrue("Unlock failed with specimen present: " + e.getMessage(), false);
+        }
+
+        // 6. Verify ReaperEngine.sequenceGenome cargo specimen requirements
+        ReaperEngine engine = new ReaperEngine(state);
+        assertTrue("Prothean requires 1 cargo pod in engine", engine.getGenomeRequiredCargoPods("prothean") == 1);
+        assertTrue("Yahg requires 1 cargo pod in engine", engine.getGenomeRequiredCargoPods("yahg") == 1);
+        assertTrue("Rachni requires 1 cargo pod in engine", engine.getGenomeRequiredCargoPods("rachni") == 1);
+        assertTrue("Volus requires 0 cargo pods in engine", engine.getGenomeRequiredCargoPods("volus") == 0);
+
+        boolean yahgBlockedWithoutSpecimen = false;
+        try {
+            engine.sequenceGenome("yahg");
+        } catch (IllegalStateException ise) {
+            yahgBlockedWithoutSpecimen = ise.getMessage().contains("Specimens Missing");
+        } catch (Exception e) {
+            assertTrue("Unexpected exception: " + e.getMessage(), false);
+        }
+        assertTrue("Sequencing Yahg without specimen in cargo is blocked", yahgBlockedWithoutSpecimen);
+
+        try {
+            state.getCargoHold().store(new HarvestYield("Yahg Apex Flesh", 150, 80));
+            assertTrue("Cargo now has 1 specimen", state.countCargoSpecimens() == 1);
+            engine.sequenceGenome("yahg");
+            assertTrue("Yahg is sequenced after synthesis", engine.isGenomeSequenced("yahg"));
+            assertTrue("Sequencing Yahg consumed specimen from cargo (now 0)", state.countCargoSpecimens() == 0);
+        } catch (Exception e) {
+            assertTrue("Yahg synthesis failed with specimen: " + e.getMessage(), false);
+        }
     }
 }

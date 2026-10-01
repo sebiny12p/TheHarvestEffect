@@ -20,6 +20,7 @@ public class FrequencyDecoderDialog extends JDialog {
     private final GalacticState state;
 
     private JLabel lblFreqDisplay;
+    private JTextField txtDirectFreq;
     private JSlider sldFreq;
     private JProgressBar barSignalStrength;
     private JLabel lblFeedback;
@@ -86,6 +87,49 @@ public class FrequencyDecoderDialog extends JDialog {
         lblFreqDisplay.setFont(new Font("Monospaced", Font.BOLD, 28));
         lblFreqDisplay.setForeground(new Color(0, 240, 255));
 
+        // Direct Frequency Input Deck
+        JPanel directInputPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 4));
+        directInputPanel.setOpaque(false);
+
+        JLabel lblDirectPrompt = new JLabel("Direct Frequency Entry:");
+        lblDirectPrompt.setFont(new Font("Monospaced", Font.BOLD, 12));
+        lblDirectPrompt.setForeground(new Color(180, 220, 255));
+
+        txtDirectFreq = new JTextField("450.0", 6);
+        txtDirectFreq.setFont(new Font("Monospaced", Font.BOLD, 15));
+        txtDirectFreq.setHorizontalAlignment(JTextField.CENTER);
+        txtDirectFreq.setBackground(new Color(25, 35, 50));
+        txtDirectFreq.setForeground(new Color(0, 255, 200));
+        txtDirectFreq.setCaretColor(Color.CYAN);
+        txtDirectFreq.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(0, 180, 230), 1),
+                BorderFactory.createEmptyBorder(3, 6, 3, 6)
+        ));
+
+        JLabel lblMHz = new JLabel("MHz");
+        lblMHz.setFont(new Font("Monospaced", Font.BOLD, 12));
+        lblMHz.setForeground(new Color(180, 220, 255));
+
+        JButton btnDirectTune = new JButton("📻 Tune Receiver");
+        btnDirectTune.setFont(new Font("SansSerif", Font.BOLD, 11));
+        btnDirectTune.setBackground(new Color(0, 130, 190));
+        btnDirectTune.setForeground(Color.WHITE);
+        btnDirectTune.setFocusPainted(false);
+
+        ActionListener tuneAction = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                applyDirectFrequencyInput();
+            }
+        };
+        txtDirectFreq.addActionListener(tuneAction);
+        btnDirectTune.addActionListener(tuneAction);
+
+        directInputPanel.add(lblDirectPrompt);
+        directInputPanel.add(txtDirectFreq);
+        directInputPanel.add(lblMHz);
+        directInputPanel.add(btnDirectTune);
+
         // Tuning Slider
         sldFreq = new JSlider(1000, 9990, 4500); // 100.0 to 999.0 MHz in 0.1 increments
         sldFreq.setBackground(new Color(14, 18, 28));
@@ -99,7 +143,10 @@ public class FrequencyDecoderDialog extends JDialog {
             @Override
             public void stateChanged(ChangeEvent e) {
                 double freq = sldFreq.getValue() / 10.0;
-                lblFreqDisplay.setText(String.format("%.1f MHz", freq));
+                lblFreqDisplay.setText(String.format(java.util.Locale.US, "%.1f MHz", freq));
+                if (!txtDirectFreq.hasFocus()) {
+                    txtDirectFreq.setText(String.format(java.util.Locale.US, "%.1f", freq));
+                }
                 updateSignalStrengthPreview(freq);
             }
         });
@@ -128,7 +175,7 @@ public class FrequencyDecoderDialog extends JDialog {
         barSignalStrength.setForeground(new Color(220, 50, 50));
         barSignalStrength.setBackground(new Color(30, 20, 25));
 
-        lblFeedback = new JLabel("Adjust tuning slider or use fine-tune buttons to locate carrier wave.", SwingConstants.CENTER);
+        lblFeedback = new JLabel("Enter target frequency above or adjust slider/fine-tune buttons to locate carrier wave.", SwingConstants.CENTER);
         lblFeedback.setAlignmentX(Component.CENTER_ALIGNMENT);
         lblFeedback.setFont(new Font("Monospaced", Font.PLAIN, 11));
         lblFeedback.setForeground(new Color(180, 210, 230));
@@ -146,6 +193,8 @@ public class FrequencyDecoderDialog extends JDialog {
                 "Decrypted Transcript Feed", 0, 0, new Font("Monospaced", Font.PLAIN, 10), new Color(130, 160, 190)));
 
         centerPanel.add(lblFreqDisplay);
+        centerPanel.add(Box.createVerticalStrut(4));
+        centerPanel.add(directInputPanel);
         centerPanel.add(Box.createVerticalStrut(6));
         centerPanel.add(sldFreq);
         centerPanel.add(fineTunePanel);
@@ -188,6 +237,30 @@ public class FrequencyDecoderDialog extends JDialog {
 
         add(content);
         updateSignalStrengthPreview(450.0);
+    }
+
+    private void applyDirectFrequencyInput() {
+        if (txtDirectFreq == null) return;
+        String text = txtDirectFreq.getText().trim().replace(',', '.');
+        try {
+            double freq = Double.parseDouble(text);
+            if (freq < 100.0 || freq > 999.0) {
+                JOptionPane.showMessageDialog(this,
+                        "Frequency out of range!\nPlease enter a frequency between 100.0 and 999.0 MHz.",
+                        "Out of Range", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+            int sliderVal = (int) Math.round(freq * 10.0);
+            sldFreq.setValue(sliderVal);
+            double clamped = sliderVal / 10.0;
+            lblFreqDisplay.setText(String.format(java.util.Locale.US, "%.1f MHz", clamped));
+            txtDirectFreq.setText(String.format(java.util.Locale.US, "%.1f", clamped));
+            updateSignalStrengthPreview(clamped);
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(this,
+                    "Invalid frequency format: '" + text + "'.\nPlease enter a valid number (e.g. 119.4).",
+                    "Invalid Format", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private JButton createTuneButton(String label, final int delta) {

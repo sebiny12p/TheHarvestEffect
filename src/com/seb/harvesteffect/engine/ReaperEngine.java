@@ -76,15 +76,34 @@ public class ReaperEngine implements Serializable {
         }
         int eezoCost = getGenomeEezoCost(clean);
         int bioCost = getGenomeBiomassCost(clean);
+        int reqCargo = getGenomeRequiredCargoPods(clean);
         if (state.getEezoReserves() < eezoCost) {
             throw new InsufficientEezoException(eezoCost, state.getEezoReserves());
         }
         if (state.getAccumulatedBiomass() < bioCost) {
             throw new InsufficientBiomassException(bioCost, state.getAccumulatedBiomass());
         }
+        if (reqCargo > 0 && state.countCargoSpecimens() < reqCargo) {
+            throw new IllegalStateException(String.format(
+                    "Specimens Missing: Synthesizing %s genome requires %d Harvested Cargo Specimen pod(s) in Flagship Cargo Hold as a biological template (Currently in hold: %d).",
+                    clean.substring(0, 1).toUpperCase() + clean.substring(1), reqCargo, state.countCargoSpecimens()));
+        }
         state.deductEezo(eezoCost);
         state.deductBiomass(bioCost);
+        if (reqCargo > 0) {
+            state.consumeCargoSpecimens(reqCargo);
+        }
         sequencedGenomes.add(clean);
+    }
+
+    public int getGenomeRequiredCargoPods(String speciesKey) {
+        if (speciesKey == null) return 0;
+        switch (speciesKey.toLowerCase().trim()) {
+            case "prothean": return 1;
+            case "yahg": return 1;
+            case "rachni": return 1;
+            default: return 0;
+        }
     }
 
     public int getGenomeEezoCost(String speciesKey) {
