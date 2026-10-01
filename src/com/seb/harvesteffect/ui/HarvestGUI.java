@@ -921,8 +921,10 @@ public class HarvestGUI extends JFrame {
                     btnSeed.setText(String.format("🌱 Deploy %s Probe (In Cargo - 0 Eezo)", sp));
                     btnSeed.setBackground(new Color(0, 180, 120));
                 } else if (engine.isEnforceGenomeResearch() && !engine.isGenomeSequenced(sp)) {
+                    int eCost = engine.getGenomeEezoCost(sp);
+                    int bCost = engine.getGenomeBiomassCost(sp);
                     btnSeed.setEnabled(true);
-                    btnSeed.setText(String.format("🧬 Sequence %s Genome (40 E, 30 B)", sp));
+                    btnSeed.setText(String.format("🧬 Sequence %s Genome (%d E, %d B)", sp, eCost, bCost));
                     btnSeed.setBackground(new Color(130, 50, 170));
                 } else {
                     if (state.getEezoReserves() >= cost) {
@@ -2120,8 +2122,10 @@ public class HarvestGUI extends JFrame {
                         btnSeed.setText(String.format("🌱 Deploy %s Probe (In Cargo - 0 Eezo)", selSp));
                         btnSeed.setBackground(new Color(0, 180, 120));
                     } else if (engine.isEnforceGenomeResearch() && !engine.isGenomeSequenced(selSp)) {
+                        int eCost = engine.getGenomeEezoCost(selSp);
+                        int bCost = engine.getGenomeBiomassCost(selSp);
                         btnSeed.setEnabled(true);
-                        btnSeed.setText(String.format("🧬 Sequence %s (40 E, 30 B)", selSp));
+                        btnSeed.setText(String.format("🧬 Sequence %s (%d E, %d B)", selSp, eCost, bCost));
                         btnSeed.setBackground(new Color(130, 50, 170));
                     } else {
                         int cost = 50;

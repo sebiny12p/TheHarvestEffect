@@ -57,7 +57,13 @@ public class ReaperEngine implements Serializable {
     public boolean isGenomeSequenced(String speciesKey) {
         if (speciesKey == null) return false;
         String clean = speciesKey.toLowerCase().trim();
-        return sequencedGenomes.contains(clean);
+        if (sequencedGenomes.contains(clean)) {
+            return true;
+        }
+        if (missionManager != null && missionManager.isSpeciesUnlocked(clean)) {
+            return true;
+        }
+        return false;
     }
 
     public void sequenceGenome(String speciesKey) throws InsufficientEezoException, InsufficientBiomassException {
@@ -65,7 +71,7 @@ public class ReaperEngine implements Serializable {
             throw new IllegalArgumentException("Species key cannot be null.");
         }
         String clean = speciesKey.toLowerCase().trim();
-        if (sequencedGenomes.contains(clean)) {
+        if (isGenomeSequenced(clean)) {
             return;
         }
         int eezoCost = getGenomeEezoCost(clean);

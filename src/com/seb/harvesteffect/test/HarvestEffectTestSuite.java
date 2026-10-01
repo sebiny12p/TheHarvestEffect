@@ -61,6 +61,7 @@ public class HarvestEffectTestSuite {
         testBugFixesVerification();
         testCliCommandParserAndTerminalRenderer();
         testSovereignMovementConstraintDroneSpecializationAndCrucibleWiping();
+        testStoryUnlockedSpeciesGenomeSequencingReconciliation();
 
         System.out.println("==============================================================");
         System.out.printf("Test Results: %d/%d tests passed successfully!%n", passedTests, totalTests);
@@ -1766,6 +1767,65 @@ public class HarvestEffectTestSuite {
                     engine.getCampaign().getCrucibleProgress() == currentProgress - 10);
         } catch (Exception e) {
             assertTrue("Drone sabotage test failed: " + e.getMessage(), false);
+        }
+    }
+
+    private static void testStoryUnlockedSpeciesGenomeSequencingReconciliation() {
+        System.out.println("\n[Test 42: Story Unlocked Species & Genome Sequencing Reconciliation]");
+        GalacticState state = new GalacticState("Sovereign", "Cycle 1");
+        ReaperEngine engine = new ReaperEngine(state);
+        engine.setEnforceGenomeResearch(true);
+        state.addEezo(1000);
+        state.addBiomass(1000);
+
+        // 1. Initial State (Mission 1 / Index 0): Humanity is sequenced; Alien story species and specialized species unsequenced
+        assertTrue("Humanity is sequenced at campaign start", engine.isGenomeSequenced("humanity"));
+        assertTrue("Asari is unsequenced before Mission 2", !engine.isGenomeSequenced("asari"));
+        assertTrue("Turian is unsequenced before Mission 2", !engine.isGenomeSequenced("turian"));
+        assertTrue("Volus is unsequenced before Bio-Bank research", !engine.isGenomeSequenced("volus"));
+
+        // 2. Advance to Mission 2 (Act I): Story unlocks Asari, Turian, Salarian
+        engine.getMissionManager().advanceMission(); // Index 1
+        assertTrue("Story unlock marks Asari as sequenced in engine archives", engine.isGenomeSequenced("asari"));
+        assertTrue("Story unlock marks Turian as sequenced in engine archives", engine.isGenomeSequenced("turian"));
+        assertTrue("Story unlock marks Salarian as sequenced in engine archives", engine.isGenomeSequenced("salarian"));
+        assertTrue("Non-story specialized species Volus remains unsequenced", !engine.isGenomeSequenced("volus"));
+
+        // 3. Story-unlocked Asari seeds directly without requiring bio-bank synthesis
+        boolean asariSeeded = false;
+        try {
+            engine.seedCivilization(0, 1, "asari");
+            asariSeeded = true;
+        } catch (Exception e) {
+            asariSeeded = false;
+        }
+        assertTrue("Story-unlocked Asari seeds without throwing unsequenced exception", asariSeeded);
+
+        // 4. Calling sequenceGenome on already-story-unlocked species does not waste Eezo/Biomass
+        int eezoBefore = state.getEezoReserves();
+        int bioBefore = state.getAccumulatedBiomass();
+        try {
+            engine.sequenceGenome("asari");
+            assertTrue("No Eezo deducted for already-unlocked story species", state.getEezoReserves() == eezoBefore);
+            assertTrue("No Biomass deducted for already-unlocked story species", state.getAccumulatedBiomass() == bioBefore);
+        } catch (Exception e) {
+            assertTrue("sequenceGenome on unlocked species threw error: " + e.getMessage(), false);
+        }
+
+        // 5. Researching specialized species (Volus) via Bio-Banks deducts resources and unlocks it
+        int volusEezoCost = engine.getGenomeEezoCost("volus");
+        int volusBioCost = engine.getGenomeBiomassCost("volus");
+        assertTrue("Volus has specialized Eezo cost (100)", volusEezoCost == 100);
+        assertTrue("Volus has specialized Biomass cost (50)", volusBioCost == 50);
+
+        try {
+            engine.sequenceGenome("volus");
+            assertTrue("Volus synthesis deducted 100 Eezo", state.getEezoReserves() == eezoBefore - 100);
+            assertTrue("Volus synthesis deducted 50 Biomass", state.getAccumulatedBiomass() == bioBefore - 50);
+            assertTrue("Volus is now sequenced after Bio-Bank research", engine.isGenomeSequenced("volus"));
+            assertTrue("Volus now appears in getUnlockedSpecies", engine.getMissionManager().getUnlockedSpecies(engine).contains("Volus"));
+        } catch (Exception e) {
+            assertTrue("Volus synthesis failed: " + e.getMessage(), false);
         }
     }
 }
