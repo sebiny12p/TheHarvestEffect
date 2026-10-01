@@ -21,8 +21,8 @@ public class CampaignManager {
                 "Construct Primary Relay Omega for Sector 2, research Indoctrination Emitter, link 4+ Relays, and harvest 9+ total crops."),
         ACT_4_CRUCIBLE_WAR("Act IV: The Shadow Rim & Precursor Clones",
                 "Construct Primary Relay Gamma for Sector 3 and harvest 3+ Apex Civilizations during the war before the Crucible fires!"),
-        ACT_5_ENDGAME("Act V: The Eternal Silo & Catalyst Convergence",
-                "Upgrade Citadel to Tier 5 and achieve full 24-planet nursery convergence.");
+        ACT_5_ENDGAME("Act V: The Eternal Silo & Galactic Nursery",
+                "Maintain full 24-planet nursery convergence across all sectors.");
 
         private final String title;
         private final String objectiveDescription;
@@ -342,7 +342,7 @@ public class CampaignManager {
                      + "Sequence Asari, Protheans, and Rachni, and harvest 3 Apex Civilizations before the Crucible fires!\"\n";
             case ACT_5_ENDGAME:
                 return "=== DIRECTIVE COMPLETE: THE ETERNAL SILO ===\n"
-                     + "\"The Crucible remnants are pulverized. The Citadel Nexus stands at Tier V.\n"
+                     + "\"The Crucible remnants are pulverized. Sovereign and the Reaper Armada stand triumphant.\n"
                      + "Across 24 terraformed worlds and 4 sectors, organic civilizations are farmed,\n"
                      + "nurtured, and methodically harvested in perpetual mechanical precision.\n"
                      + "No wild evolution will ever threaten synthetic order again.\n"

@@ -64,6 +64,7 @@ public class HarvestEffectTestSuite {
         testStoryUnlockedSpeciesGenomeSequencingReconciliation();
         testDroneRelocationAndDismantling();
         testCargoSpecimenResearchRequirementsAndSalvageLiquidation();
+        testMissionCompletionSandboxSuppressionAndVictoryNarrative();
 
         System.out.println("==============================================================");
         System.out.printf("Test Results: %d/%d tests passed successfully!%n", passedTests, totalTests);
@@ -2013,5 +2014,59 @@ public class HarvestEffectTestSuite {
         } catch (Exception e) {
             assertTrue("Yahg synthesis failed with specimen: " + e.getMessage(), false);
         }
+    }
+
+    private static void testMissionCompletionSandboxSuppressionAndVictoryNarrative() {
+        System.out.println("\n[Test 45: Mission Completion Sandbox Suppression & Campaign Victory Narrative]");
+        GalacticState state = new GalacticState("Harbinger", "Cycle 1");
+        MissionManager mm = new MissionManager();
+
+        // 1. Initial mission manager state
+        assertTrue("isAllMissionsCompleted initially false", !mm.isAllMissionsCompleted());
+        assertTrue("Initial active mission index is 0", mm.getActiveMissionIndex() == 0);
+
+        // 2. Advance to the final mission (Mission 6, index 5)
+        mm.setActiveMissionIndex(5);
+        assertTrue("Active mission index is 5", mm.getActiveMissionIndex() == 5);
+        assertTrue("Active mission is Mission 6", mm.getActiveMission().getMissionNumber() == 6);
+        assertTrue("isAllMissionsCompleted is false before Mission 6 completes", !mm.isAllMissionsCompleted());
+
+        // 3. Complete Mission 6 tasks
+        while (!mm.getActiveMission().isCompleted()) {
+            mm.getActiveMission().advanceTask();
+        }
+        assertTrue("Mission 6 is completed", mm.getActiveMission().isCompleted());
+        assertTrue("isAllMissionsCompleted is true when Mission 6 is completed", mm.isAllMissionsCompleted());
+
+        // 4. Calling advanceMission advances index to 6 and remains all completed
+        mm.advanceMission();
+        assertTrue("Active mission index advanced to 6", mm.getActiveMissionIndex() == 6);
+        assertTrue("isAllMissionsCompleted remains true at index 6", mm.isAllMissionsCompleted());
+        assertTrue("getActiveMission returns last historical mission safely", mm.getActiveMission().getMissionNumber() == 6);
+        assertTrue("getUnlockNotification for index 6 returns null (no invalid Act IV popups)",
+                mm.getUnlockNotification(mm.getActiveMissionIndex()) == null);
+
+        // 5. Calling checkMissionTriggers when all missions are done returns false
+        boolean triggerFired = mm.checkMissionTriggers(state, 12);
+        assertTrue("checkMissionTriggers returns false when all missions completed", !triggerFired);
+
+        // 6. Calling advanceMission again does not overflow beyond historicalMissions.length
+        mm.advanceMission();
+        assertTrue("advanceMission capped safely at 6", mm.getActiveMissionIndex() == 6);
+
+        // 7. Verify Campaign Victory narrative does NOT mention Citadel Tier V
+        CampaignManager cm = new CampaignManager();
+        cm.setCurrentAct(CampaignManager.Act.ACT_5_ENDGAME);
+        String briefing = cm.getStoryBriefing();
+        assertTrue("Act 5 briefing contains 'Sovereign and the Reaper Armada stand triumphant'",
+                briefing.contains("Sovereign and the Reaper Armada stand triumphant"));
+        assertTrue("Act 5 briefing does not mention 'Tier V'", !briefing.contains("Tier V"));
+        assertTrue("Act 5 briefing does not mention 'Tier 5'", !briefing.contains("Tier 5"));
+        assertTrue("Act 5 Act objective description does not mention 'Tier 5'",
+                !CampaignManager.Act.ACT_5_ENDGAME.getObjectiveDescription().contains("Tier 5"));
+        assertTrue("Act 5 Act objective description does not mention 'Tier V'",
+                !CampaignManager.Act.ACT_5_ENDGAME.getObjectiveDescription().contains("Tier V"));
+        assertTrue("Act 5 Act objective description mentions 24-planet nursery convergence",
+                CampaignManager.Act.ACT_5_ENDGAME.getObjectiveDescription().contains("24-planet nursery convergence"));
     }
 }

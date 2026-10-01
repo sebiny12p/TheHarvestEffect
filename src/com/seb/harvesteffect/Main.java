@@ -217,20 +217,24 @@ public class Main {
             }
 
             // Check if mission completed
-            boolean missionDone = missionManager.getActiveMission().isCompleted()
-                    || missionManager.checkMissionTriggers(state, engine.getCampaign().getTotalAscensions());
-            if (missionDone) {
-                System.out.println("\n**************************************************************************");
-                System.out.println("             *** MISSION DIRECTIVE ACCOMPLISHED! ***                      ");
-                System.out.println("**************************************************************************");
-                System.out.println("Directive Completed: " + activeMission.getMissionTitle());
-                missionManager.advanceMission();
-                String unlockAnnouncement = missionManager.getUnlockNotification(missionManager.getActiveMissionIndex());
-                if (unlockAnnouncement != null && !unlockAnnouncement.isEmpty()) {
-                    System.out.println("\n" + unlockAnnouncement + "\n");
+            if (!missionManager.isAllMissionsCompleted() && !engine.getCampaign().isCampaignVictory()) {
+                boolean missionDone = missionManager.getActiveMission().isCompleted()
+                        || missionManager.checkMissionTriggers(state, engine.getCampaign().getTotalAscensions());
+                if (missionDone) {
+                    System.out.println("\n**************************************************************************");
+                    System.out.println("             *** MISSION DIRECTIVE ACCOMPLISHED! ***                      ");
+                    System.out.println("**************************************************************************");
+                    System.out.println("Directive Completed: " + activeMission.getMissionTitle());
+                    missionManager.advanceMission();
+                    if (!missionManager.isAllMissionsCompleted()) {
+                        String unlockAnnouncement = missionManager.getUnlockNotification(missionManager.getActiveMissionIndex());
+                        if (unlockAnnouncement != null && !unlockAnnouncement.isEmpty()) {
+                            System.out.println("\n" + unlockAnnouncement + "\n");
+                        }
+                        System.out.println(missionManager.getActiveMission().getTacticalBriefing());
+                    }
+                    SaveManager.autoSave(engine);
                 }
-                System.out.println(missionManager.getActiveMission().getTacticalBriefing());
-                SaveManager.autoSave(engine);
             }
 
             // Check for pending Story Dilemma

@@ -1458,9 +1458,21 @@ public class HarvestGUI extends JFrame {
     private void checkMissionProgress() {
         if (missionManager == null || campaign == null) return;
 
+        // If campaign has concluded (victory or defeat), or all missions are completed, suppress story progression popups
+        if (campaign.isCampaignVictory() || campaign.isVictoryAcknowledged() || campaign.isCrucibleDefeat() || missionManager.isAllMissionsCompleted()) {
+            checkCampaignEndConditions();
+            updateDisplay();
+            return;
+        }
+
         MissionManager.Mission active = missionManager.getActiveMission();
         if (active.isCompleted()) {
             missionManager.advanceMission();
+            if (missionManager.isAllMissionsCompleted()) {
+                checkCampaignEndConditions();
+                updateDisplay();
+                return;
+            }
             active = missionManager.getActiveMission();
         }
 
@@ -1471,28 +1483,30 @@ public class HarvestGUI extends JFrame {
 
         int newTaskIndex = active.getCurrentTaskIndex();
 
-        if (justCompleted || active.isCompleted()) {
+        if (justCompleted && active.isCompleted()) {
             SoundEffects.playRelayChime();
             String completedTitle = active.getMissionTitle();
 
             missionManager.advanceMission();
 
-            String unlockMsg = missionManager.getUnlockNotification(missionManager.getActiveMissionIndex());
-            if (unlockMsg != null && !unlockMsg.isEmpty()) {
-                SoundEffects.playReaperHorn();
-                JOptionPane.showMessageDialog(this,
-                        "MISSION DIRECTIVE ACCOMPLISHED!\n\n"
-                        + unlockMsg,
-                        "Assets Unlocked // Story Progression", JOptionPane.INFORMATION_MESSAGE);
-            } else {
-                JOptionPane.showMessageDialog(this,
-                        "MISSION DIRECTIVE ACCOMPLISHED!\n\n"
-                        + completedTitle + " complete.\n"
-                        + "Advancing to the next campaign act!",
-                        "Mission Complete", JOptionPane.INFORMATION_MESSAGE);
+            if (!missionManager.isAllMissionsCompleted()) {
+                String unlockMsg = missionManager.getUnlockNotification(missionManager.getActiveMissionIndex());
+                if (unlockMsg != null && !unlockMsg.isEmpty()) {
+                    SoundEffects.playReaperHorn();
+                    JOptionPane.showMessageDialog(this,
+                            "MISSION DIRECTIVE ACCOMPLISHED!\n\n"
+                            + unlockMsg,
+                            "Assets Unlocked // Story Progression", JOptionPane.INFORMATION_MESSAGE);
+                } else {
+                    JOptionPane.showMessageDialog(this,
+                            "MISSION DIRECTIVE ACCOMPLISHED!\n\n"
+                            + completedTitle + " complete.\n"
+                            + "Advancing to the next campaign act!",
+                            "Mission Complete", JOptionPane.INFORMATION_MESSAGE);
+                }
+                refreshDropdowns();
+                showMissionBriefingDialog();
             }
-            refreshDropdowns();
-            showMissionBriefingDialog();
             SaveManager.autoSave(engine);
         } else if (newTaskIndex > oldTaskIndex) {
             SoundEffects.playRelayChime();
@@ -1572,7 +1586,7 @@ public class HarvestGUI extends JFrame {
             SoundEffects.playReaperHorn();
             String victoryMsg = "<html><body style='width: 540px; font-family: sans-serif; color: #000000;'>"
                     + "<h2 style='color: #006622; margin-top: 0;'>✦ VICTORY: THE HARVEST EFFECT PREVAILS ✦</h2>"
-                    + "<p style='font-size: 13px; line-height: 1.4; color: #000000;'><b>\"The Crucible remnants are pulverized. The Citadel Nexus stands at Tier V.<br>"
+                    + "<p style='font-size: 13px; line-height: 1.4; color: #000000;'><b>\"The Crucible remnants are pulverized. Sovereign and the Reaper Armada stand triumphant.<br>"
                     + "Across 24 terraformed worlds and 4 sectors, organic civilizations are farmed,<br>"
                     + "nurtured, and methodically harvested in perpetual mechanical precision.<br>"
                     + "No wild evolution will ever threaten synthetic order again.<br>"
@@ -1679,6 +1693,7 @@ public class HarvestGUI extends JFrame {
     }
 
     private void showMissionBriefingDialog() {
+        if (missionManager == null || missionManager.isAllMissionsCompleted()) return;
         MissionManager.Mission m = missionManager.getActiveMission();
         StringBuilder sb = new StringBuilder();
         sb.append(m.getCycleEraTitle()).append("\n");
@@ -1711,8 +1726,8 @@ public class HarvestGUI extends JFrame {
         sb.append("ACT IV: THE SHADOW RIM & PRECURSOR CLONES\n");
         sb.append("   Primary Relay Gamma unlocks Sector 3. Allied Crucible remnants attempt a desperate\n");
         sb.append("   last-stand weapon while spacefaring species launch creeping off-world colonies.\n\n");
-        sb.append("ACT V: THE ETERNAL SILO & CATALYST CONVERGENCE\n");
-        sb.append("   The Citadel awakens to Tier 5 Catalyst Convergence. All 24 worlds across 4 sectors\n");
+        sb.append("ACT V: THE ETERNAL SILO & GALACTIC NURSERY\n");
+        sb.append("   The Crucible remnants are crushed. All 24 worlds across 4 sectors\n");
         sb.append("   are cultivated in perpetual, automated mechanical perfection.\n");
 
         showLargeStyledDialog("Reaper Campaign Codex", "📖 THE REAPER CAMPAIGN & PLANETARY NURSERY CODEX", sb.toString(), 980, 720);
@@ -2012,10 +2027,16 @@ public class HarvestGUI extends JFrame {
     }
 
     public void updateDisplay() {
-        MissionManager.Mission m = missionManager.getActiveMission();
-        lblCycleTitle.setText(m.getCycleEraTitle());
-        lblMissionTitle.setText(m.getMissionTitle());
-        lblTaskDirective.setText(m.getActiveTaskText());
+        if (campaign.isCampaignVictory() || campaign.isVictoryAcknowledged() || missionManager.isAllMissionsCompleted()) {
+            lblCycleTitle.setText("ACT V: THE ETERNAL SILO");
+            lblMissionTitle.setText("Galactic Nursery Sandbox Mode");
+            lblTaskDirective.setText("[CAMPAIGN COMPLETE] The Harvest Effect is eternal. Free sandbox galaxy mode active.");
+        } else {
+            MissionManager.Mission m = missionManager.getActiveMission();
+            lblCycleTitle.setText(m.getCycleEraTitle());
+            lblMissionTitle.setText(m.getMissionTitle());
+            lblTaskDirective.setText(m.getActiveTaskText());
+        }
 
         if (campaign.getCurrentAct() == CampaignManager.Act.ACT_4_CRUCIBLE_WAR) {
             barCrucible.setVisible(true);

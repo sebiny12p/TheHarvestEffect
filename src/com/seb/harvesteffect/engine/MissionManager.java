@@ -197,14 +197,20 @@ public class MissionManager {
     }
 
     public void advanceMission() {
-        if (activeMissionIndex < historicalMissions.length - 1) {
+        if (activeMissionIndex < historicalMissions.length) {
             activeMissionIndex++;
             historicalCycleCount++;
         }
     }
 
     public void setActiveMissionIndex(int activeMissionIndex) {
-        this.activeMissionIndex = Math.max(0, Math.min(historicalMissions.length - 1, activeMissionIndex));
+        this.activeMissionIndex = Math.max(0, Math.min(historicalMissions.length, activeMissionIndex));
+    }
+
+    public boolean isAllMissionsCompleted() {
+        return activeMissionIndex >= historicalMissions.length
+                || (activeMissionIndex == historicalMissions.length - 1
+                    && historicalMissions[historicalMissions.length - 1].isCompleted());
     }
 
     public void setHistoricalCycleCount(int historicalCycleCount) {
@@ -372,8 +378,9 @@ public class MissionManager {
     }
 
     public boolean checkMissionTriggers(GalacticState state, TechTree techTree, int totalAscensions, int selectedSector, int selectedCluster) {
+        if (isAllMissionsCompleted()) return false;
         Mission current = getActiveMission();
-        if (current.isCompleted()) return true;
+        if (current.isCompleted()) return false;
 
         switch (current.getMissionNumber()) {
             case 1: // Seeding Tutorial
