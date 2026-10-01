@@ -224,22 +224,19 @@ public class MissionManager {
         List<String> list = new ArrayList<String>();
         list.add("Humanity");
 
-        if (activeMissionIndex >= 1) { // Act I (Mission 2 & 3)
+        if (activeMissionIndex >= 1) { // Act I (Mission 2 & 3): Asari, Turian
             list.add("Asari");
             list.add("Turian");
-            list.add("Salarian");
         }
-        if (activeMissionIndex >= 3) { // Act II (Mission 4)
+        if (activeMissionIndex >= 3) { // Act II (Mission 4): Salarian, Krogan
+            list.add("Salarian");
             list.add("Krogan");
+        }
+        if (activeMissionIndex >= 4) { // Act III (Mission 5): Quarian, Batarian
             list.add("Quarian");
             list.add("Batarian");
         }
-        if (activeMissionIndex >= 4) { // Act III (Mission 5)
-            list.add("Hanar");
-            list.add("Drell");
-            list.add("Rachni");
-        }
-        // Note: 5 Specialized species (Volus, Vorcha, Elcor, Prothean, Yahg)
+        // Note: 8 Specialized & Precursor species (Volus, Vorcha, Elcor, Prothean, Yahg, Hanar, Drell, Rachni)
         // are NOT auto-unlocked by story, but MUST be researched in Reaper Bio-Banks!
         return list;
     }
@@ -311,7 +308,7 @@ public class MissionManager {
                      + "      to cosmic farmers to replenish their depleted dark space reserves!\n\n"
                      + "  [+] NEW ASSETS & PROTOCOLS UNLOCKED:\n"
                      + "      - Ruined Citadel Reconstruction (Keepers & Eezo Dividends)\n"
-                     + "      - Story Genomes Sequenced & Ready to Seed: Asari, Turian, Salarian\n"
+                     + "      - Story Genomes Sequenced & Ready to Seed: Asari, Turian\n"
                      + "      - Bio-Bank Synthesis Terminal: Unlocks Specialized Alien Genomes\n"
                      + "      - Biomechanical Swarm Construct: Husk Swarm\n"
                      + "      - Cyclonic Kinetic Shield Matrix Research\n"
@@ -323,9 +320,9 @@ public class MissionManager {
                      + "  [+] SECTOR RECONNECTED:\n"
                      + "      - Sector 1: The Attican Traverse & Krogan DMZ (6 Worlds)\n"
                      + "  [+] NEW STORY GENOMES SEQUENCED & READY TO SEED:\n"
-                     + "      - Krogan, Quarian, Batarian\n"
-                     + "  [+] SPECIALIZED GENOME DISCOVERED IN BIO-BANKS:\n"
-                     + "      - Volus (Keepers & Commercial Dividends)\n"
+                     + "      - Salarian, Krogan\n"
+                     + "  [+] SPECIALIZED GENOMES DISCOVERED IN BIO-BANKS:\n"
+                     + "      - Volus (Keepers & Commercial Dividends), Vorcha\n"
                      + "  [+] NEW SWARM CONSTRUCT:\n"
                      + "      - Scion Behemoth (Heavy Shock Artillery // Breaches Kinetic Barriers)\n"
                      + "  [+] NEW ARMADA RESEARCH:\n"
@@ -338,10 +335,11 @@ public class MissionManager {
                      + "  [+] SECTOR RECONNECTED:\n"
                      + "      - Sector 2: The Terminus Systems & Perseus Veil (6 Worlds)\n"
                      + "  [+] NEW STORY GENOMES SEQUENCED & READY TO SEED:\n"
+                     + "      - Quarian, Batarian\n"
+                     + "  [+] PRECURSOR & SPECIALIZED GENOMES IN BIO-BANKS:\n"
                      + "      - Hanar (Kahje)        : Enkindler acolytes (Auto-aligns Mass Relays)\n"
                      + "      - Drell (Rakhana)      : Photographic memory (+50% synaptic dark energy)\n"
                      + "      - Rachni (Suen)        : Quantum song hive (Functions as intrinsic relay)\n"
-                     + "  [+] PRECURSOR GENOME DISCOVERED IN BIO-BANKS:\n"
                      + "      - Prothean (Eden Prime): Ancient imperial masters (x3.0 Dark Energy)\n"
                      + "  [+] NEW ARMADA RESEARCH:\n"
                      + "      - Genetic Synthesis Vats (Doubles Cargo Hold + 50% biomass value)\n"

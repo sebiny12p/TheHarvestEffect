@@ -62,6 +62,7 @@ public class HarvestEffectTestSuite {
         testCliCommandParserAndTerminalRenderer();
         testSovereignMovementConstraintDroneSpecializationAndCrucibleWiping();
         testStoryUnlockedSpeciesGenomeSequencingReconciliation();
+        testDroneRelocationAndDismantling();
 
         System.out.println("==============================================================");
         System.out.printf("Test Results: %d/%d tests passed successfully!%n", passedTests, totalTests);
@@ -441,8 +442,8 @@ public class HarvestEffectTestSuite {
 
         // Advance to Mission 1 (Cycle II)
         mm.advanceMission();
-        assertTrue("Cycle II unlocks Asari, Turian, Salarian (4 total species)",
-                mm.getUnlockedSpecies().size() == 4 && mm.isSpeciesUnlocked("Asari"));
+        assertTrue("Cycle II unlocks Asari, Turian (3 total species)",
+                mm.getUnlockedSpecies().size() == 3 && mm.isSpeciesUnlocked("Asari") && mm.isSpeciesUnlocked("Turian"));
         assertTrue("Cycle II unlocks Husk Swarm (2 total units)",
                 mm.getUnlockedUnits().size() == 2 && mm.isUnitUnlocked("Husk Swarm"));
         assertTrue("Cyclonic barrier available in Cycle II",
@@ -453,23 +454,23 @@ public class HarvestEffectTestSuite {
         // Advance to Mission 3 (Cycle III)
         mm.advanceMission(); // mission index 2
         mm.advanceMission(); // mission index 3
-        assertTrue("Act II unlocks Krogan, Quarian, Batarian (7 total story species)",
-                mm.getUnlockedSpecies().size() == 7 && mm.isSpeciesUnlocked("Krogan"));
+        assertTrue("Act II unlocks Salarian and Krogan (5 total story species)",
+                mm.getUnlockedSpecies().size() == 5 && mm.isSpeciesUnlocked("Salarian") && mm.isSpeciesUnlocked("Krogan"));
         assertTrue("Cycle III unlocks Scion Behemoth", mm.isUnitUnlocked("Scion Behemoth"));
         assertTrue("Thanix cannons available in Cycle III",
                 tree.getUpgrade("thanix_cannons").isAvailableInMission(3));
 
         // Advance to Mission 4 (Cycle IV)
         mm.advanceMission(); // mission index 4
-        assertTrue("Act III unlocks Hanar, Drell, Rachni (10 total story species)",
-                mm.getUnlockedSpecies().size() == 10 && mm.isSpeciesUnlocked("Hanar"));
+        assertTrue("Act III unlocks Quarian and Batarian (7 total story species)",
+                mm.getUnlockedSpecies().size() == 7 && mm.isSpeciesUnlocked("Quarian") && mm.isSpeciesUnlocked("Batarian"));
         assertTrue("Biomass vats available in Cycle IV",
                 tree.getUpgrade("biomass_vats").isAvailableInMission(4));
 
         // Advance to Mission 5 (Cycle V)
         mm.advanceMission(); // mission index 5
-        assertTrue("10 species unlocked via campaign story, while 5 specialized species require Bio-Bank research",
-                mm.getUnlockedSpecies().size() == 10);
+        assertTrue("7 species unlocked via campaign story, while 8 specialized species require Bio-Bank research",
+                mm.getUnlockedSpecies().size() == 7);
         assertTrue("Quantum entanglement relays available in Cycle V",
                 tree.getUpgrade("quantum_entanglement_relays").isAvailableInMission(5));
     }
@@ -1782,16 +1783,33 @@ public class HarvestEffectTestSuite {
         assertTrue("Humanity is sequenced at campaign start", engine.isGenomeSequenced("humanity"));
         assertTrue("Asari is unsequenced before Mission 2", !engine.isGenomeSequenced("asari"));
         assertTrue("Turian is unsequenced before Mission 2", !engine.isGenomeSequenced("turian"));
+        assertTrue("Salarian is unsequenced before Act II", !engine.isGenomeSequenced("salarian"));
         assertTrue("Volus is unsequenced before Bio-Bank research", !engine.isGenomeSequenced("volus"));
+        assertTrue("Hanar is unsequenced before Bio-Bank research", !engine.isGenomeSequenced("hanar"));
 
-        // 2. Advance to Mission 2 (Act I): Story unlocks Asari, Turian, Salarian
+        // 2. Advance to Mission 2 (Act I): Story unlocks Asari, Turian
         engine.getMissionManager().advanceMission(); // Index 1
         assertTrue("Story unlock marks Asari as sequenced in engine archives", engine.isGenomeSequenced("asari"));
         assertTrue("Story unlock marks Turian as sequenced in engine archives", engine.isGenomeSequenced("turian"));
-        assertTrue("Story unlock marks Salarian as sequenced in engine archives", engine.isGenomeSequenced("salarian"));
+        assertTrue("Salarian remains unsequenced in Act I", !engine.isGenomeSequenced("salarian"));
         assertTrue("Non-story specialized species Volus remains unsequenced", !engine.isGenomeSequenced("volus"));
 
-        // 3. Story-unlocked Asari seeds directly without requiring bio-bank synthesis
+        // 3. Advance to Act II (Index 3): Story unlocks Salarian, Krogan
+        engine.getMissionManager().advanceMission(); // Index 2
+        engine.getMissionManager().advanceMission(); // Index 3
+        assertTrue("Act II unlock marks Salarian as sequenced", engine.isGenomeSequenced("salarian"));
+        assertTrue("Act II unlock marks Krogan as sequenced", engine.isGenomeSequenced("krogan"));
+        assertTrue("Quarian remains unsequenced in Act II", !engine.isGenomeSequenced("quarian"));
+
+        // 4. Advance to Act III (Index 4): Story unlocks Quarian, Batarian; Hanar, Drell, Rachni are in Bio-Banks
+        engine.getMissionManager().advanceMission(); // Index 4
+        assertTrue("Act III unlock marks Quarian as sequenced", engine.isGenomeSequenced("quarian"));
+        assertTrue("Act III unlock marks Batarian as sequenced", engine.isGenomeSequenced("batarian"));
+        assertTrue("Hanar remains in Bio-Bank research", !engine.isGenomeSequenced("hanar"));
+        assertTrue("Drell remains in Bio-Bank research", !engine.isGenomeSequenced("drell"));
+        assertTrue("Rachni remains in Bio-Bank research", !engine.isGenomeSequenced("rachni"));
+
+        // 5. Story-unlocked Asari seeds directly without requiring bio-bank synthesis
         boolean asariSeeded = false;
         try {
             engine.seedCivilization(0, 1, "asari");
@@ -1801,7 +1819,7 @@ public class HarvestEffectTestSuite {
         }
         assertTrue("Story-unlocked Asari seeds without throwing unsequenced exception", asariSeeded);
 
-        // 4. Calling sequenceGenome on already-story-unlocked species does not waste Eezo/Biomass
+        // 6. Calling sequenceGenome on already-story-unlocked species does not waste Eezo/Biomass
         int eezoBefore = state.getEezoReserves();
         int bioBefore = state.getAccumulatedBiomass();
         try {
@@ -1812,20 +1830,88 @@ public class HarvestEffectTestSuite {
             assertTrue("sequenceGenome on unlocked species threw error: " + e.getMessage(), false);
         }
 
-        // 5. Researching specialized species (Volus) via Bio-Banks deducts resources and unlocks it
-        int volusEezoCost = engine.getGenomeEezoCost("volus");
-        int volusBioCost = engine.getGenomeBiomassCost("volus");
-        assertTrue("Volus has specialized Eezo cost (100)", volusEezoCost == 100);
-        assertTrue("Volus has specialized Biomass cost (50)", volusBioCost == 50);
+        // 7. Researching moved species (Hanar) via Bio-Banks deducts resources and unlocks it
+        int hanarEezoCost = engine.getGenomeEezoCost("hanar");
+        int hanarBioCost = engine.getGenomeBiomassCost("hanar");
+        assertTrue("Hanar has Bio-Bank Eezo cost (70)", hanarEezoCost == 70);
+        assertTrue("Hanar has Bio-Bank Biomass cost (40)", hanarBioCost == 40);
 
         try {
-            engine.sequenceGenome("volus");
-            assertTrue("Volus synthesis deducted 100 Eezo", state.getEezoReserves() == eezoBefore - 100);
-            assertTrue("Volus synthesis deducted 50 Biomass", state.getAccumulatedBiomass() == bioBefore - 50);
-            assertTrue("Volus is now sequenced after Bio-Bank research", engine.isGenomeSequenced("volus"));
-            assertTrue("Volus now appears in getUnlockedSpecies", engine.getMissionManager().getUnlockedSpecies(engine).contains("Volus"));
+            engine.sequenceGenome("hanar");
+            assertTrue("Hanar synthesis deducted 70 Eezo", state.getEezoReserves() == eezoBefore - 70);
+            assertTrue("Hanar synthesis deducted 40 Biomass", state.getAccumulatedBiomass() == bioBefore - 40);
+            assertTrue("Hanar is now sequenced after Bio-Bank research", engine.isGenomeSequenced("hanar"));
+            assertTrue("Hanar now appears in getUnlockedSpecies", engine.getMissionManager().getUnlockedSpecies(engine).contains("Hanar"));
         } catch (Exception e) {
-            assertTrue("Volus synthesis failed: " + e.getMessage(), false);
+            assertTrue("Hanar synthesis failed: " + e.getMessage(), false);
         }
+    }
+
+    private static void testDroneRelocationAndDismantling() {
+        System.out.println("\n[Test 43: Biomechanical Swarm Relocation & Dismantling]");
+        GalacticState state = new GalacticState("Sovereign", "Cycle 1");
+        ReaperEngine engine = new ReaperEngine(state);
+        state.addEezo(1000);
+        state.addBiomass(1000);
+
+        int initialEezo = state.getEezoReserves();
+        int initialBio = state.getAccumulatedBiomass();
+
+        // 1. Deploy Husk Swarm at [0, 1] (Cost: 30 Eezo, 50 Biomass)
+        try {
+            engine.deployUnit(0, 1, "Husk Swarm");
+            assertTrue("Husk Swarm deployed at [0,1]", state.getGalaxyMap().getSystem(0, 1).getBiomechanicalUnit() != null);
+            assertTrue("Deployment deducted 30 Eezo", state.getEezoReserves() == initialEezo - 30);
+            assertTrue("Deployment deducted 50 Biomass", state.getAccumulatedBiomass() == initialBio - 50);
+        } catch (Exception e) {
+            assertTrue("Deployment failed: " + e.getMessage(), false);
+        }
+
+        // 2. Relocate Husk Swarm from [0, 1] to [0, 2]
+        try {
+            engine.moveUnit(0, 1, 0, 2);
+            assertTrue("Origin system [0,1] no longer has a unit", state.getGalaxyMap().getSystem(0, 1).getBiomechanicalUnit() == null);
+            assertTrue("Destination system [0,2] has relocated Husk Swarm", state.getGalaxyMap().getSystem(0, 2).getBiomechanicalUnit() != null);
+            assertTrue("Relocated unit retains designation", state.getGalaxyMap().getSystem(0, 2).getBiomechanicalUnit().getDesignation().contains("Husk"));
+        } catch (Exception e) {
+            assertTrue("Relocation failed: " + e.getMessage(), false);
+        }
+
+        // 3. Deploy Collector Drone at [0, 1] and verify moving to occupied [0, 2] is blocked
+        try {
+            engine.deployUnit(0, 1, "Collector Drone");
+            boolean moveBlocked = false;
+            try {
+                engine.moveUnit(0, 1, 0, 2);
+            } catch (SystemOccupiedException soe) {
+                moveBlocked = true;
+            }
+            assertTrue("Moving swarm onto occupied star system throws SystemOccupiedException", moveBlocked);
+        } catch (Exception e) {
+            assertTrue("Collector deployment failed: " + e.getMessage(), false);
+        }
+
+        // 4. Dismantle Husk Swarm at [0, 2] (Refunds 50%: 15 Eezo, 25 Biomass)
+        int preDismantleEezo = state.getEezoReserves();
+        int preDismantleBio = state.getAccumulatedBiomass();
+        try {
+            int[] refund = engine.dismantleUnit(0, 2);
+            assertTrue("Refund returned 15 Eezo", refund[0] == 15);
+            assertTrue("Refund returned 25 Biomass", refund[1] == 25);
+            assertTrue("State Eezo credited +15", state.getEezoReserves() == preDismantleEezo + 15);
+            assertTrue("State Biomass credited +25", state.getAccumulatedBiomass() == preDismantleBio + 25);
+            assertTrue("System [0,2] unit is cleared after dismantle", state.getGalaxyMap().getSystem(0, 2).getBiomechanicalUnit() == null);
+        } catch (Exception e) {
+            assertTrue("Dismantle failed: " + e.getMessage(), false);
+        }
+
+        // 5. Attempting to dismantle on empty system throws ReaperException
+        boolean emptyDismantleBlocked = false;
+        try {
+            engine.dismantleUnit(0, 2);
+        } catch (ReaperException re) {
+            emptyDismantleBlocked = true;
+        }
+        assertTrue("Dismantling on empty star system throws ReaperException", emptyDismantleBlocked);
     }
 }

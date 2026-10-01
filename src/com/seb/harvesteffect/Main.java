@@ -459,11 +459,15 @@ public class Main {
         }
         int rechargeChoice = unlockedUnits.size() + 1;
         int extractChoice = unlockedUnits.size() + 2;
+        int moveChoice = unlockedUnits.size() + 3;
+        int dismantleChoice = unlockedUnits.size() + 4;
         System.out.printf("  %d. Recharge Biomechanical Energy Core%n", rechargeChoice);
         System.out.printf("  %d. Extract Telemetry / Biotic Yield%n", extractChoice);
+        System.out.printf("  %d. Relocate / Move Stationed Swarm%n", moveChoice);
+        System.out.printf("  %d. Dismantle Stationed Swarm (Recover 50%% Salvage)%n", dismantleChoice);
 
         GalacticState state = engine.getState();
-        int choice = parser.readInt(String.format("Directive (1-%d): ", extractChoice), 1, extractChoice);
+        int choice = parser.readInt(String.format("Directive (1-%d): ", dismantleChoice), 1, dismantleChoice);
         if (choice >= 1 && choice <= unlockedUnits.size()) {
             String selectedUnit = unlockedUnits.get(choice - 1);
             int[] coords = parser.readCoordinates("Target star system for swarm deployment",
@@ -504,6 +508,28 @@ public class Main {
                 }
             } else {
                 System.out.println("[ERROR] No unit stationed in target system.");
+            }
+        } else if (choice == moveChoice) {
+            int[] from = parser.readCoordinates("Source star system with stationed swarm",
+                    state.getGalaxyMap().getRowCount(), state.getGalaxyMap().getColCount());
+            int[] to = parser.readCoordinates("Destination star system to relocate swarm",
+                    state.getGalaxyMap().getRowCount(), state.getGalaxyMap().getColCount());
+            try {
+                engine.moveUnit(from[0], from[1], to[0], to[1]);
+                System.out.printf("[SUCCESS] Swarm construct successfully transferred from [%d, %d] to [%d, %d].%n",
+                        from[0], from[1], to[0], to[1]);
+            } catch (Exception e) {
+                System.out.printf("[RELOCATION FAILED] %s%n", e.getMessage());
+            }
+        } else if (choice == dismantleChoice) {
+            int[] coords = parser.readCoordinates("Target system with stationed swarm to dismantle",
+                    state.getGalaxyMap().getRowCount(), state.getGalaxyMap().getColCount());
+            try {
+                int[] refund = engine.dismantleUnit(coords[0], coords[1]);
+                System.out.printf("[SUCCESS] Swarm construct decommissioned at [%d, %d]. Recovered +%d Eezo, +%d Biomass.%n",
+                        coords[0], coords[1], refund[0], refund[1]);
+            } catch (Exception e) {
+                System.out.printf("[DISMANTLE FAILED] %s%n", e.getMessage());
             }
         }
     }

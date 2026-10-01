@@ -95,6 +95,9 @@ public class ReaperEngine implements Serializable {
             case "elcor": return 150;
             case "prothean": return 250;
             case "yahg": return 300;
+            case "hanar": return 70;
+            case "drell": return 60;
+            case "rachni": return 120;
             default: return 40;
         }
     }
@@ -107,6 +110,9 @@ public class ReaperEngine implements Serializable {
             case "elcor": return 100;
             case "prothean": return 200;
             case "yahg": return 250;
+            case "hanar": return 40;
+            case "drell": return 45;
+            case "rachni": return 90;
             default: return 30;
         }
     }
@@ -273,6 +279,82 @@ public class ReaperEngine implements Serializable {
         // Easter Egg Trigger: Collector Drone deployed on Sur'Kesh while Salarians at Tier 2
         Civilization civ = system.getCivilization();
         if (unit instanceof CollectorDrone && sector == 0 && cluster == 3 && civ != null && civ.getEvolutionaryTier() >= 2) {
+            scanner.triggerSignal("mordin");
+        }
+    }
+
+    public int[] dismantleUnit(int sector, int cluster) throws ReaperException {
+        if (!state.getGalaxyMap().isSectorUnlocked(sector)) {
+            throw new ReaperException(String.format("Sector %d is inaccessible.", sector));
+        }
+        StarSystem system = state.getGalaxyMap().getSystem(sector, cluster);
+        BiomechanicalUnit unit = system.getBiomechanicalUnit();
+        if (unit == null) {
+            throw new ReaperException(String.format("No biomechanical unit stationed at %s [%d,%d] to dismantle.",
+                    system.getSystemName(), sector, cluster));
+        }
+
+        int refundEezo = unit.getDeploymentCost() / 2;
+        int refundBio = unit.getBiomassCost() / 2;
+        state.addEezo(refundEezo);
+        state.addBiomass(refundBio);
+        system.removeUnit();
+
+        return new int[] { refundEezo, refundBio };
+    }
+
+    public void moveUnit(int fromSector, int fromCluster, int toSector, int toCluster)
+            throws SystemOccupiedException, ReaperException {
+        if (!state.getGalaxyMap().isSectorUnlocked(fromSector)) {
+            throw new ReaperException(String.format("Origin Sector %d is inaccessible.", fromSector));
+        }
+        if (!state.getGalaxyMap().isSectorUnlocked(toSector)) {
+            throw new ReaperException(String.format(
+                    "Destination Sector %d (%s) is inaccessible. Build a Primary Mass Relay to reach this sector.",
+                    toSector, state.getGalaxyMap().getSectorShortName(toSector)));
+        }
+
+        StarSystem fromSystem = state.getGalaxyMap().getSystem(fromSector, fromCluster);
+        BiomechanicalUnit unit = fromSystem.getBiomechanicalUnit();
+        if (unit == null) {
+            throw new ReaperException(String.format("No biomechanical unit stationed at %s [%d,%d] to relocate.",
+                    fromSystem.getSystemName(), fromSector, fromCluster));
+        }
+
+        StarSystem toSystem = state.getGalaxyMap().getSystem(toSector, toCluster);
+        if (toSystem.getBiomechanicalUnit() != null) {
+            throw new SystemOccupiedException(toSystem.getSystemName(),
+                    "Swarm Construct: " + toSystem.getBiomechanicalUnit().getDesignation());
+        }
+
+        fromSystem.removeUnit();
+        toSystem.deployUnit(unit);
+
+        // In Act 4 (Crucible War): Relocating specialized biomechanical units onto spacefaring worlds can raid/sabotage Crucible research!
+        if (campaign != null && campaign.getCurrentAct() == CampaignManager.Act.ACT_4_CRUCIBLE_WAR) {
+            Civilization targetCiv = toSystem.getCivilization();
+            if (targetCiv != null && targetCiv.getEvolutionaryTier() >= Civilization.TIER_INDUSTRIAL) {
+                int reduction;
+                String desc;
+                if (unit instanceof ScionBehemoth) {
+                    reduction = 10;
+                    desc = "Biotic Shockwave Demolition pulverized Alliance Crucible assembly yards";
+                } else if (unit instanceof HuskSwarm) {
+                    reduction = 6;
+                    desc = "Cybernetic Ground Swarm assaulted and captured planetary Crucible research facilities";
+                } else {
+                    reduction = 4;
+                    desc = "Airborne Collector Drones infiltrated communications networks and corrupted Crucible telemetry";
+                }
+                campaign.reduceCrucibleProgress(reduction);
+                lastCrucibleNotice = String.format("[CRUCIBLE SABOTAGED] %s: %s on %s [%d,%d]! Crucible progress reduced by -%d%%! (Current: %d%%)",
+                        unit.getDesignation(), desc, toSystem.getSystemName(), toSector, toCluster, reduction, campaign.getCrucibleProgress());
+            }
+        }
+
+        // Easter Egg Trigger: Collector Drone relocated to Sur'Kesh while Salarians at Tier 2+
+        Civilization civ = toSystem.getCivilization();
+        if (unit instanceof CollectorDrone && toSector == 0 && toCluster == 3 && civ != null && civ.getEvolutionaryTier() >= 2) {
             scanner.triggerSignal("mordin");
         }
     }

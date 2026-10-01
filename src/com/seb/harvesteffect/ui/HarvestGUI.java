@@ -56,6 +56,8 @@ public class HarvestGUI extends JFrame {
     private JButton btnBatchHarvest;
     private JButton btnRelay;
     private JButton btnDeployUnit;
+    private JButton btnMoveUnit;
+    private JButton btnDismantleUnit;
     private JButton btnTechTree;
     private JButton btnNexus;
     private JButton btnEconomy;
@@ -515,6 +517,34 @@ public class HarvestGUI extends JFrame {
             }
         });
         secondaryDock.add(btnDeployUnit);
+
+        btnMoveUnit = new JButton("🚀 Move Drone");
+        btnMoveUnit.setFont(new Font("SansSerif", Font.BOLD, 11));
+        btnMoveUnit.setBackground(new Color(0, 110, 160));
+        btnMoveUnit.setForeground(Color.WHITE);
+        btnMoveUnit.setVisible(false);
+        btnMoveUnit.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                SoundEffects.playUiClick();
+                showRelocateUnitDialog();
+            }
+        });
+        secondaryDock.add(btnMoveUnit);
+
+        btnDismantleUnit = new JButton("♻️ Dismantle Drone");
+        btnDismantleUnit.setFont(new Font("SansSerif", Font.BOLD, 11));
+        btnDismantleUnit.setBackground(new Color(120, 45, 45));
+        btnDismantleUnit.setForeground(Color.WHITE);
+        btnDismantleUnit.setVisible(false);
+        btnDismantleUnit.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                SoundEffects.playUiClick();
+                dismantleStationedUnitAction();
+            }
+        });
+        secondaryDock.add(btnDismantleUnit);
 
         btnJumpFlagship = new JButton("👑 Jump Sovereign");
         btnJumpFlagship.setFont(new Font("SansSerif", Font.BOLD, 11));
@@ -1293,6 +1323,104 @@ public class HarvestGUI extends JFrame {
         updateDisplay();
     }
 
+    private void showRelocateUnitDialog() {
+        StarSystem currentSys = state.getGalaxyMap().getSystem(selectedSector, selectedCluster);
+        BiomechanicalUnit unit = currentSys.getBiomechanicalUnit();
+        if (unit == null) {
+            JOptionPane.showMessageDialog(this, "No biomechanical unit stationed at this system to relocate.",
+                    "No Swarm Stationed", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        java.util.List<String> options = new java.util.ArrayList<String>();
+        final java.util.List<int[]> targetCoords = new java.util.ArrayList<int[]>();
+
+        for (int s = 0; s < state.getGalaxyMap().getRowCount(); s++) {
+            if (!state.getGalaxyMap().isSectorUnlocked(s)) continue;
+            for (int c = 0; c < state.getGalaxyMap().getColCount(); c++) {
+                if (s == selectedSector && c == selectedCluster) continue;
+                StarSystem sys = state.getGalaxyMap().getSystem(s, c);
+                if (sys.getBiomechanicalUnit() == null) {
+                    String civDesc = sys.getCivilization() != null
+                            ? String.format(" [%s - %s]", sys.getCivilization().getSpeciesName(), sys.getCivilization().getMaturityStage())
+                            : " [Uninhabited]";
+                    options.add(String.format("Sector %d, Cluster %d: %s%s", s, c, sys.getSystemName(), civDesc));
+                    targetCoords.add(new int[] { s, c });
+                }
+            }
+        }
+
+        if (options.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                    "No available destinations without stationed units in accessible sectors.",
+                    "No Valid Destinations", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        JComboBox<String> combo = new JComboBox<String>(options.toArray(new String[0]));
+        combo.setFont(new Font("SansSerif", Font.PLAIN, 12));
+
+        int result = JOptionPane.showConfirmDialog(this, combo,
+                String.format("Relocate %s from %s [%d,%d] to:", unit.getDesignation(), currentSys.getSystemName(), selectedSector, selectedCluster),
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
+
+        if (result == JOptionPane.OK_OPTION) {
+            int selIdx = combo.getSelectedIndex();
+            if (selIdx >= 0 && selIdx < targetCoords.size()) {
+                int[] dest = targetCoords.get(selIdx);
+                try {
+                    engine.moveUnit(selectedSector, selectedCluster, dest[0], dest[1]);
+                    SoundEffects.playRelayChime();
+                    StarSystem destSys = state.getGalaxyMap().getSystem(dest[0], dest[1]);
+                    log(String.format("SWARM RELOCATED: %s transferred from %s [%d,%d] to %s [%d,%d].",
+                            unit.getDesignation(), currentSys.getSystemName(), selectedSector, selectedCluster,
+                            destSys.getSystemName(), dest[0], dest[1]));
+                    if (engine.getLastCrucibleNotice() != null) {
+                        log(engine.getLastCrucibleNotice());
+                        JOptionPane.showMessageDialog(this, engine.getLastCrucibleNotice(), "Crucible Sabotage", JOptionPane.INFORMATION_MESSAGE);
+                    }
+                    updateDisplay();
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(this, ex.getMessage(), "Relocation Failed", JOptionPane.WARNING_MESSAGE);
+                }
+            }
+        }
+    }
+
+    private void dismantleStationedUnitAction() {
+        StarSystem currentSys = state.getGalaxyMap().getSystem(selectedSector, selectedCluster);
+        BiomechanicalUnit unit = currentSys.getBiomechanicalUnit();
+        if (unit == null) {
+            JOptionPane.showMessageDialog(this, "No biomechanical unit stationed at this system to dismantle.",
+                    "No Swarm Stationed", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int refE = unit.getDeploymentCost() / 2;
+        int refB = unit.getBiomassCost() / 2;
+
+        int confirm = JOptionPane.showConfirmDialog(this,
+                String.format("Dismantle and recycle %s stationed at %s [%d,%d]?\n\n"
+                        + "Recovered Salvage Yield:\n"
+                        + "  + %d Element Zero (Eezo)\n"
+                        + "  + %d Genetic Biomass\n\n"
+                        + "Proceed with dismantling?",
+                        unit.getDesignation(), currentSys.getSystemName(), selectedSector, selectedCluster, refE, refB),
+                "Dismantle Swarm Construct", JOptionPane.YES_NO_OPTION, JOptionPane.WARNING_MESSAGE);
+
+        if (confirm == JOptionPane.YES_OPTION) {
+            try {
+                int[] refund = engine.dismantleUnit(selectedSector, selectedCluster);
+                SoundEffects.playUiClick();
+                log(String.format("SWARM DISMANTLED: %s decommissioned at %s [%d,%d]. Salvaged +%d Eezo, +%d Biomass.",
+                        unit.getDesignation(), currentSys.getSystemName(), selectedSector, selectedCluster, refund[0], refund[1]));
+                updateDisplay();
+            } catch (Exception ex) {
+                JOptionPane.showMessageDialog(this, ex.getMessage(), "Dismantle Failed", JOptionPane.WARNING_MESSAGE);
+            }
+        }
+    }
+
     private void harvestSelectedSystem() {
         try {
             HarvestYield yield = engine.harvestSystem(selectedSector, selectedCluster);
@@ -2022,7 +2150,10 @@ public class HarvestGUI extends JFrame {
             if (btnDeployUnit != null) {
                 btnDeployUnit.setEnabled(false);
                 btnDeployUnit.setText("🔒 Sector Inaccessible");
+                btnDeployUnit.setVisible(true);
             }
+            if (btnMoveUnit != null) btnMoveUnit.setVisible(false);
+            if (btnDismantleUnit != null) btnDismantleUnit.setVisible(false);
             if (btnJumpFlagship != null) {
                 btnJumpFlagship.setEnabled(false);
                 btnJumpFlagship.setText("🔒 Sector Locked");
@@ -2148,9 +2279,24 @@ public class HarvestGUI extends JFrame {
 
             if (btnDeployUnit != null) {
                 if (unit != null) {
-                    btnDeployUnit.setText("Swarm Stationed");
+                    btnDeployUnit.setText("Stationed: " + unit.getDesignation());
                     btnDeployUnit.setEnabled(false);
+                    btnDeployUnit.setVisible(true);
+                    if (btnMoveUnit != null) {
+                        btnMoveUnit.setVisible(true);
+                        btnMoveUnit.setEnabled(true);
+                    }
+                    if (btnDismantleUnit != null) {
+                        int refE = unit.getDeploymentCost() / 2;
+                        int refB = unit.getBiomassCost() / 2;
+                        btnDismantleUnit.setText(refB > 0 ? String.format("♻️ Dismantle (+%d E, +%d B)", refE, refB) : String.format("♻️ Dismantle (+%d E)", refE));
+                        btnDismantleUnit.setVisible(true);
+                        btnDismantleUnit.setEnabled(true);
+                    }
                 } else {
+                    btnDeployUnit.setVisible(true);
+                    if (btnMoveUnit != null) btnMoveUnit.setVisible(false);
+                    if (btnDismantleUnit != null) btnDismantleUnit.setVisible(false);
                     String selU = getSelectedUnitRaw();
                     int uEezo = selU.toLowerCase().contains("scion") ? 60 : (selU.toLowerCase().contains("drone") ? 75 : 30);
                     int uBio = selU.toLowerCase().contains("scion") ? 140 : (selU.toLowerCase().contains("drone") ? 0 : 50);
