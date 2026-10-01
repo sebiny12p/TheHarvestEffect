@@ -1,0 +1,21 @@
+# Compiled class binaries
+bin/
+*.class
+
+# Temporary build artifacts
+sources.txt
+*.log
+*.dat
+
+# IDE & Editor files
+.idea/
+*.iml
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini

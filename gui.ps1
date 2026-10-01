@@ -1,0 +1,1 @@
+& "$PSScriptRoot\gui.bat"

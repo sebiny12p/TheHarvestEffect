@@ -1,0 +1,1 @@
+& "$PSScriptRoot\test.bat" $args
