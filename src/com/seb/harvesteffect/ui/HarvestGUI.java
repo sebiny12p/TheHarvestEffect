@@ -1319,16 +1319,16 @@ public class HarvestGUI extends JFrame {
         SoundEffects.playRadioStatic(400);
 
         String[] options = {
-            "<html><b>" + dilemma.getChoiceA().getLabel() + "</b><br><small>" + dilemma.getChoiceA().getDescription() + "</small></html>",
-            "<html><b>" + dilemma.getChoiceB().getLabel() + "</b><br><small>" + dilemma.getChoiceB().getDescription() + "</small></html>"
+            "<html><b style='color: #000000;'>" + dilemma.getChoiceA().getLabel() + "</b><br><small style='color: #222222;'>" + dilemma.getChoiceA().getDescription() + "</small></html>",
+            "<html><b style='color: #000000;'>" + dilemma.getChoiceB().getLabel() + "</b><br><small style='color: #222222;'>" + dilemma.getChoiceB().getDescription() + "</small></html>"
         };
 
-        String message = String.format("<html><body style='width: 460px;'>"
-                + "<h3 style='color: #00E6FF;'>⚡ %s</h3>"
-                + "<p><b>COMM-LINK:</b> <span style='color: #FFB428;'>%s</span></p>"
-                + "<p style='font-style: italic; color: #E0E8F5;'>%s</p>"
+        String message = String.format("<html><body style='width: 480px; font-family: sans-serif; color: #000000;'>"
+                + "<h3 style='color: #004D73; margin-top: 0; margin-bottom: 4px;'>⚡ %s</h3>"
+                + "<p style='margin-top: 0; margin-bottom: 6px; color: #111111;'><b>COMM-LINK:</b> <span style='color: #A05500;'><b>%s</b></span></p>"
+                + "<p style='font-style: italic; color: #000000; font-size: 12px; line-height: 1.4; margin-top: 6px; margin-bottom: 8px;'>\"%s\"</p>"
                 + "<hr>"
-                + "<p><b>Select Sovereign's Strategic Directive:</b></p></body></html>",
+                + "<p style='color: #000000; margin-top: 6px;'><b>Select Sovereign's Strategic Directive:</b></p></body></html>",
                 dilemma.getTitle(), dilemma.getSpeaker(), dilemma.getTransmissionText());
 
         int choice = JOptionPane.showOptionDialog(
@@ -1347,10 +1347,10 @@ public class HarvestGUI extends JFrame {
         engine.getDilemmaManager().markResolved(dilemma.getActId());
         SoundEffects.playRelayChime();
 
-        String outcomeMsg = String.format("<html><body style='width: 440px;'>"
-                + "<h4 style='color: #00FF90;'>CONSEQUENCE OF DIRECTIVE:</h4>"
-                + "<p>%s</p>"
-                + "<p style='color: #FFD700;'><b>Fleet Impact: +%d Eezo, +%d Genetic Biomass</b></p></body></html>",
+        String outcomeMsg = String.format("<html><body style='width: 440px; font-family: sans-serif; color: #000000;'>"
+                + "<h4 style='color: #006622; margin-top: 0; margin-bottom: 6px;'>CONSEQUENCE OF DIRECTIVE:</h4>"
+                + "<p style='color: #000000; font-size: 12px; line-height: 1.4;'>%s</p>"
+                + "<p style='color: #7A5200; font-size: 12px;'><b>Fleet Impact: +%d Eezo, +%d Genetic Biomass</b></p></body></html>",
                 chosen.getOutcomeNarrative(), chosen.getEezoBonus(), chosen.getBiomassBonus());
 
         JOptionPane.showMessageDialog(this, outcomeMsg, "Directive Outcome", JOptionPane.INFORMATION_MESSAGE);
@@ -1372,18 +1372,18 @@ public class HarvestGUI extends JFrame {
 
             if (realTimeTimer != null) realTimeTimer.stop();
             SoundEffects.playReaperHorn();
-            String victoryMsg = "<html><body style='width: 540px; font-family: sans-serif;'>"
-                    + "<h2 style='color: #00FF90;'>✦ VICTORY: THE HARVEST EFFECT PREVAILS ✦</h2>"
-                    + "<p style='font-size: 13px; line-height: 1.4;'><b>\"The Crucible remnants are pulverized. The Citadel Nexus stands at Tier V.<br>"
+            String victoryMsg = "<html><body style='width: 540px; font-family: sans-serif; color: #000000;'>"
+                    + "<h2 style='color: #006622; margin-top: 0;'>✦ VICTORY: THE HARVEST EFFECT PREVAILS ✦</h2>"
+                    + "<p style='font-size: 13px; line-height: 1.4; color: #000000;'><b>\"The Crucible remnants are pulverized. The Citadel Nexus stands at Tier V.<br>"
                     + "Across 24 terraformed worlds and 4 sectors, organic civilizations are farmed,<br>"
                     + "nurtured, and methodically harvested in perpetual mechanical precision.<br>"
                     + "No wild evolution will ever threaten synthetic order again.<br>"
                     + "The Harvest Effect is eternal.\"</b></p>"
                     + "<hr>"
-                    + String.format("<p style='font-size: 13px;'><b>Total Ascensions:</b> %d<br>"
+                    + String.format("<p style='font-size: 13px; color: #000000;'><b>Total Ascensions:</b> %d<br>"
                             + "<b>Final Biomass:</b> %d Units<br>"
                             + "<b>Element Zero Reserves:</b> %d</p>"
-                    + "<p style='color: #00E6FF;'>You may continue in unrestricted Sandbox Galaxy Mode or return to the Main Menu.</p>"
+                    + "<p style='color: #004D73;'><b>You may continue in unrestricted Sandbox Galaxy Mode or return to the Main Menu.</b></p>"
                     + "</body></html>",
                     campaign.getTotalAscensions(), state.getAccumulatedBiomass(), state.getEezoReserves());
 
@@ -1401,14 +1401,14 @@ public class HarvestGUI extends JFrame {
         if (campaign.isCrucibleDefeat()) {
             if (realTimeTimer != null) realTimeTimer.stop();
             SoundEffects.playCrucibleAlert();
-            String defeatMsg = "<html><body style='width: 520px; font-family: sans-serif;'>"
-                    + "<h2 style='color: #FF4040;'>⚠️ CRITICAL FAILURE: THE CRUCIBLE HAS FIRED! ⚠️</h2>"
-                    + "<p style='font-size: 13px; line-height: 1.4;'><b>The Allied Fleets succeeded in defending the Crucible remnants construction site.<br>"
+            String defeatMsg = "<html><body style='width: 520px; font-family: sans-serif; color: #000000;'>"
+                    + "<h2 style='color: #990000; margin-top: 0;'>⚠️ CRITICAL FAILURE: THE CRUCIBLE HAS FIRED! ⚠️</h2>"
+                    + "<p style='font-size: 13px; line-height: 1.4; color: #000000;'><b>The Allied Fleets succeeded in defending the Crucible remnants construction site.<br>"
                     + "The surviving resistance triggered the catalyst beam.<br>"
                     + "A cataclysmic energy wave tears through all mass relays.<br>"
                     + "Sovereign and the Reaper armada have been annihilated.</b></p>"
                     + "<hr>"
-                    + "<p style='color: #FFA0A0;'>The organics have broken the Harvest Effect.</p>"
+                    + "<p style='color: #880000;'><b>The organics have broken the Harvest Effect.</b></p>"
                     + "</body></html>";
 
             String[] options = { "Load Last Save", "New Campaign", "Main Menu" };
