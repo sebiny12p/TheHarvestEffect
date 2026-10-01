@@ -107,7 +107,7 @@ public class TechTreeDialog extends JDialog {
     }
 
     private void updateReservesLabel() {
-        lblReserves.setText(String.format("FLEET TREASURY: %d Eezo  |  %d Biomass  |  %d Cargo Specimen(s)",
+        lblReserves.setText(String.format("FLEET TREASURY: %d Eezo  |  %d Biomass  |  %d Biomass Matrix Pod(s) in Hold",
                 state.getEezoReserves(), state.getAccumulatedBiomass(), state.countCargoSpecimens()));
     }
 
@@ -152,7 +152,14 @@ public class TechTreeDialog extends JDialog {
             StringBuilder reqSb = new StringBuilder();
             reqSb.append(String.format("Cost: %d Eezo, %d Biomass", u.getEezoCost(), u.getBiomassCost()));
             if (u.getRequiredCargoPods() > 0) {
-                reqSb.append(String.format(", %d Cargo Specimen(s)", u.getRequiredCargoPods()));
+                int held = state.countCargoSpecimens();
+                String cargoDesc = u.getRequiredCargoDescription() != null
+                        ? u.getRequiredCargoDescription()
+                        : String.format("%dx Harvested Biomass Matrix (Any Species)", u.getRequiredCargoPods());
+                String status = held >= u.getRequiredCargoPods()
+                        ? String.format("[In Hold: %d/%d Ready]", held, u.getRequiredCargoPods())
+                        : String.format("[In Hold: %d/%d — Reap Mature World]", held, u.getRequiredCargoPods());
+                reqSb.append(String.format("  |  Cargo: %s %s", cargoDesc, status));
             }
             reqSb.append(String.format("  |  Era: %s", u.getRequiredCycleName()));
             if (u.getPrerequisiteUpgradeId() != null) {
@@ -206,10 +213,14 @@ public class TechTreeDialog extends JDialog {
                 btnAction.setBackground(new Color(60, 30, 35));
                 btnAction.setForeground(new Color(200, 140, 140));
             } else if (!cargoOk) {
-                btnAction.setText("NEED CARGO SPECIMEN");
+                btnAction.setText(String.format("NEED %dx BIOMASS MATRIX", u.getRequiredCargoPods()));
                 btnAction.setEnabled(false);
                 btnAction.setBackground(new Color(65, 35, 25));
                 btnAction.setForeground(new Color(255, 170, 120));
+                String cargoTip = u.getRequiredCargoDescription() != null
+                        ? u.getRequiredCargoDescription()
+                        : "Harvested Biomass Matrix";
+                btnAction.setToolTipText(String.format("Requires %s in Flagship Cargo Hold. Harvest any mature civilization to extract a Biomass Matrix pod.", cargoTip));
             } else {
                 if (u.getRequiredCargoPods() > 0) {
                     btnAction.setText(String.format("RESEARCH (-%d E, -%d B, -%d Pod)",

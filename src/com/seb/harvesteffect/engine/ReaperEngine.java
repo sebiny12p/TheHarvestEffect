@@ -84,9 +84,13 @@ public class ReaperEngine implements Serializable {
             throw new InsufficientBiomassException(bioCost, state.getAccumulatedBiomass());
         }
         if (reqCargo > 0 && state.countCargoSpecimens() < reqCargo) {
+            String cargoDesc = getGenomeRequiredCargoDescription(clean);
             throw new IllegalStateException(String.format(
-                    "Specimens Missing: Synthesizing %s genome requires %d Harvested Cargo Specimen pod(s) in Flagship Cargo Hold as a biological template (Currently in hold: %d).",
-                    clean.substring(0, 1).toUpperCase() + clean.substring(1), reqCargo, state.countCargoSpecimens()));
+                    "Missing Required Cargo: Synthesizing %s genome requires %s in Flagship Cargo Hold (Currently in hold: %d/%d).\n"
+                    + "How to obtain: Harvest any mature civilization to extract an organic Biomass Matrix pod.",
+                    clean.substring(0, 1).toUpperCase() + clean.substring(1),
+                    cargoDesc != null ? cargoDesc : reqCargo + "x Harvested Biomass Matrix",
+                    state.countCargoSpecimens(), reqCargo));
         }
         state.deductEezo(eezoCost);
         state.deductBiomass(bioCost);
@@ -103,6 +107,16 @@ public class ReaperEngine implements Serializable {
             case "yahg": return 1;
             case "rachni": return 1;
             default: return 0;
+        }
+    }
+
+    public String getGenomeRequiredCargoDescription(String speciesKey) {
+        if (speciesKey == null) return null;
+        switch (speciesKey.toLowerCase().trim()) {
+            case "prothean": return "1x Harvested Biomass Matrix (DNA Template)";
+            case "yahg": return "1x Harvested Biomass Matrix (Apex Muscle Template)";
+            case "rachni": return "1x Harvested Biomass Matrix (Hive Substrate Template)";
+            default: return null;
         }
     }
 

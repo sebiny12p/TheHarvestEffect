@@ -2731,7 +2731,7 @@ public class HarvestGUI extends JFrame {
         lblTitle.setForeground(new Color(0, 230, 255));
         header.add(lblTitle, BorderLayout.WEST);
 
-        JLabel lblTreasury = new JLabel(String.format("Fleet Treasury: %d Eezo  |  %d Biomass  |  %d Specimen(s)",
+        JLabel lblTreasury = new JLabel(String.format("Fleet Treasury: %d Eezo  |  %d Biomass  |  %d Biomass Matrix Pod(s) in Hold",
                 state.getEezoReserves(), state.getAccumulatedBiomass(), state.countCargoSpecimens()), SwingConstants.RIGHT);
         lblTreasury.setFont(new Font("Monospaced", Font.BOLD, 12));
         lblTreasury.setForeground(new Color(255, 215, 0));
@@ -2769,6 +2769,18 @@ public class HarvestGUI extends JFrame {
             info.add(Box.createVerticalStrut(2));
             info.add(traitLbl);
 
+            int reqPods = engine.getGenomeRequiredCargoPods(sp);
+            String cargoDesc = engine.getGenomeRequiredCargoDescription(sp);
+            if (cargoDesc != null) {
+                int held = state.countCargoSpecimens();
+                String status = held >= reqPods ? "[Hold: Ready]" : "[Reap Mature World]";
+                JLabel cargoLbl = new JLabel(String.format("<html><body style='width: 175px;'><font color='#ffaa33'><b>Cargo:</b> %s <font color='%s'>%s</font></font></body></html>",
+                        cargoDesc, held >= reqPods ? "#55ff55" : "#ff8888", status));
+                cargoLbl.setFont(new Font("SansSerif", Font.PLAIN, 9));
+                info.add(Box.createVerticalStrut(2));
+                info.add(cargoLbl);
+            }
+
             card.add(info, BorderLayout.CENTER);
 
             JButton btnAction = new JButton();
@@ -2777,7 +2789,6 @@ public class HarvestGUI extends JFrame {
             boolean isStorySpecies = missionManager.isSpeciesUnlocked(sp);
             int reqE = engine.getGenomeEezoCost(sp);
             int reqB = engine.getGenomeBiomassCost(sp);
-            int reqPods = engine.getGenomeRequiredCargoPods(sp);
 
             if (sequenced || isStorySpecies) {
                 btnAction.setText(isStorySpecies ? "✓ STORY UNLOCKED" : "✓ RESEARCHED");
@@ -2792,9 +2803,10 @@ public class HarvestGUI extends JFrame {
                     btnAction.setEnabled(false);
                     btnAction.setBackground(new Color(50, 35, 45));
                 } else if (!hasPods) {
-                    btnAction.setText(String.format("NEED %d SPECIMEN", reqPods));
+                    btnAction.setText(String.format("NEED %dx BIOMASS MATRIX", reqPods));
                     btnAction.setEnabled(false);
                     btnAction.setBackground(new Color(65, 35, 25));
+                    btnAction.setToolTipText("Requires 1x Harvested Biomass Matrix (reap any mature civilization world).");
                 } else {
                     String costStr = reqPods > 0
                             ? String.format("RESEARCH (-%d E, -%d B, -%d Pod)", reqE, reqB, reqPods)

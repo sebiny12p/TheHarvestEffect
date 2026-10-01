@@ -1950,8 +1950,10 @@ public class HarvestEffectTestSuite {
         // 3. Test TechTree Upgrade cargo pod requirements
         TechTree tree = new TechTree();
         assertTrue("biomass_vats requires 1 cargo specimen", tree.getUpgrade("biomass_vats").getRequiredCargoPods() == 1);
+        assertTrue("biomass_vats has requiredCargoDescription", tree.getUpgrade("biomass_vats").getRequiredCargoDescription().contains("Biomass Matrix"));
         assertTrue("reaper_larva_core requires 2 cargo specimens", tree.getUpgrade("reaper_larva_core").getRequiredCargoPods() == 2);
         assertTrue("genome_prothean requires 1 cargo specimen", tree.getUpgrade("genome_prothean").getRequiredCargoPods() == 1);
+        assertTrue("genome_prothean has requiredCargoDescription", tree.getUpgrade("genome_prothean").getRequiredCargoDescription().contains("DNA Template"));
         assertTrue("genome_yahg requires 1 cargo specimen", tree.getUpgrade("genome_yahg").getRequiredCargoPods() == 1);
         assertTrue("scion_amplifier requires 0 cargo specimens", tree.getUpgrade("scion_amplifier").getRequiredCargoPods() == 0);
 
@@ -1962,11 +1964,11 @@ public class HarvestEffectTestSuite {
         try {
             tree.unlockUpgrade("genome_prothean", state, 4);
         } catch (IllegalStateException ise) {
-            blockedWithoutSpecimen = ise.getMessage().contains("Specimens Missing");
+            blockedWithoutSpecimen = ise.getMessage().contains("Missing Required Cargo") || ise.getMessage().contains("Specimens Missing");
         } catch (Exception e) {
             assertTrue("Unexpected exception: " + e.getMessage(), false);
         }
-        assertTrue("Unlocking genome_prothean without cargo specimen throws 'Specimens Missing' exception", blockedWithoutSpecimen);
+        assertTrue("Unlocking genome_prothean without cargo specimen throws 'Missing Required Cargo' exception", blockedWithoutSpecimen);
 
         // 5. Storing specimen allows unlocking and consumes the specimen
         try {
@@ -1987,6 +1989,7 @@ public class HarvestEffectTestSuite {
         // 6. Verify ReaperEngine.sequenceGenome cargo specimen requirements
         ReaperEngine engine = new ReaperEngine(state);
         assertTrue("Prothean requires 1 cargo pod in engine", engine.getGenomeRequiredCargoPods("prothean") == 1);
+        assertTrue("Prothean cargo description is present", engine.getGenomeRequiredCargoDescription("prothean").contains("DNA Template"));
         assertTrue("Yahg requires 1 cargo pod in engine", engine.getGenomeRequiredCargoPods("yahg") == 1);
         assertTrue("Rachni requires 1 cargo pod in engine", engine.getGenomeRequiredCargoPods("rachni") == 1);
         assertTrue("Volus requires 0 cargo pods in engine", engine.getGenomeRequiredCargoPods("volus") == 0);
@@ -1995,7 +1998,7 @@ public class HarvestEffectTestSuite {
         try {
             engine.sequenceGenome("yahg");
         } catch (IllegalStateException ise) {
-            yahgBlockedWithoutSpecimen = ise.getMessage().contains("Specimens Missing");
+            yahgBlockedWithoutSpecimen = ise.getMessage().contains("Missing Required Cargo") || ise.getMessage().contains("Specimens Missing");
         } catch (Exception e) {
             assertTrue("Unexpected exception: " + e.getMessage(), false);
         }

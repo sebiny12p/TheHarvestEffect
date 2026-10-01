@@ -41,6 +41,7 @@ public class TechTree implements Serializable {
         private final int eezoCost;
         private final int biomassCost;
         private final int requiredCargoPods;
+        private final String requiredCargoDescription;
         private final int requiredMissionIndex;
         private final String requiredCycleName;
         private final String prerequisiteUpgradeId;
@@ -49,12 +50,22 @@ public class TechTree implements Serializable {
         public Upgrade(String id, String name, String description, Branch branch,
                        int eezoCost, int biomassCost, int requiredMissionIndex,
                        String requiredCycleName, String prerequisiteUpgradeId) {
-            this(id, name, description, branch, eezoCost, biomassCost, 0,
+            this(id, name, description, branch, eezoCost, biomassCost, 0, null,
                     requiredMissionIndex, requiredCycleName, prerequisiteUpgradeId);
         }
 
         public Upgrade(String id, String name, String description, Branch branch,
                        int eezoCost, int biomassCost, int requiredCargoPods,
+                       int requiredMissionIndex, String requiredCycleName,
+                       String prerequisiteUpgradeId) {
+            this(id, name, description, branch, eezoCost, biomassCost, requiredCargoPods,
+                    requiredCargoPods > 0 ? "1x Harvested Biomass Matrix (Any Species)" : null,
+                    requiredMissionIndex, requiredCycleName, prerequisiteUpgradeId);
+        }
+
+        public Upgrade(String id, String name, String description, Branch branch,
+                       int eezoCost, int biomassCost, int requiredCargoPods,
+                       String requiredCargoDescription,
                        int requiredMissionIndex, String requiredCycleName,
                        String prerequisiteUpgradeId) {
             this.id = id;
@@ -64,6 +75,7 @@ public class TechTree implements Serializable {
             this.eezoCost = eezoCost;
             this.biomassCost = biomassCost;
             this.requiredCargoPods = requiredCargoPods;
+            this.requiredCargoDescription = requiredCargoDescription;
             this.requiredMissionIndex = requiredMissionIndex;
             this.requiredCycleName = requiredCycleName;
             this.prerequisiteUpgradeId = prerequisiteUpgradeId;
@@ -77,7 +89,7 @@ public class TechTree implements Serializable {
         public int getEezoCost() { return eezoCost; }
         public int getBiomassCost() { return biomassCost; }
         public int getRequiredCargoPods() { return requiredCargoPods; }
-        public int getRequiredMissionIndex() { return requiredMissionIndex; }
+        public String getRequiredCargoDescription() { return requiredCargoDescription; }
         public String getRequiredCycleName() { return requiredCycleName; }
         public String getPrerequisiteUpgradeId() { return prerequisiteUpgradeId; }
         public boolean isUnlocked() { return unlocked; }
@@ -115,17 +127,17 @@ public class TechTree implements Serializable {
         map.put("biomass_vats", new Upgrade(
                 "biomass_vats",
                 "Genetic Synthesis Vats",
-                "Doubles flagship Cargo Hold capacity (to 24) and boosts biomass value by +50%. Requires 1 organic cargo specimen to calibrate synthesis vats.",
+                "Doubles flagship Cargo Hold capacity (to 24) and boosts biomass value by +50%. Requires 1x Harvested Biomass Matrix (reap any mature civilization) to calibrate synthesis vats.",
                 Branch.EXTINCTION_ARMADA,
-                350, 350, 1, 4, "Act III: The Perseus Veil", "thanix_cannons"
+                350, 350, 1, "1x Harvested Biomass Matrix (Any Species)", 4, "Act III: The Perseus Veil", "thanix_cannons"
         ));
 
         map.put("reaper_larva_core", new Upgrade(
                 "reaper_larva_core",
                 "Human-Reaper Larva Matrix",
-                "Apex synthetic dreadnought: doubles harvest yields and unlocks final victory protocol. Requires 2 organic cargo specimens (biomass slurry) to construct larva chassis.",
+                "Apex synthetic dreadnought: doubles harvest yields and unlocks final victory protocol. Requires 2x Harvested Biomass Matrix pods (reaped civilization slurry) to construct larva chassis.",
                 Branch.EXTINCTION_ARMADA,
-                600, 900, 2, 4, "Act IV: The Shadow Rim", "biomass_vats"
+                600, 900, 2, "2x Harvested Biomass Matrix (Humanity / Any Species)", 4, "Act IV: The Shadow Rim", "biomass_vats"
         ));
 
         // ==========================================
@@ -271,17 +283,17 @@ public class TechTree implements Serializable {
         map.put("genome_prothean", new Upgrade(
                 "genome_prothean",
                 "Prothean Genome Sequencing",
-                "Synthesizes Prothean precursor heirloom genome into bio-banks. Returns triple (3.0x) Dark Energy upon Ascension. Requires 1 organic cargo specimen to sequence precursor DNA.",
+                "Synthesizes Prothean precursor heirloom genome into bio-banks. Returns triple (3.0x) Dark Energy upon Ascension. Requires 1x Harvested Biomass Matrix (DNA sequencing template).",
                 Branch.BIO_BANK_GENOMES,
-                250, 200, 1, 3, "Act II: The Attican Traverse", null
+                250, 200, 1, "1x Harvested Biomass Matrix (DNA Template)", 3, "Act II: The Attican Traverse", null
         ));
 
         map.put("genome_yahg", new Upgrade(
                 "genome_yahg",
                 "Yahg Genome Sequencing",
-                "Synthesizes Yahg apex predator genome into bio-banks. Returns massive genetic biomass bulk upon Ascension. Requires 1 organic cargo specimen to reconstruct muscle matrix.",
+                "Synthesizes Yahg apex predator genome into bio-banks. Returns massive genetic biomass bulk upon Ascension. Requires 1x Harvested Biomass Matrix (muscle tissue template).",
                 Branch.BIO_BANK_GENOMES,
-                300, 250, 1, 4, "Act III: The Perseus Veil", null
+                300, 250, 1, "1x Harvested Biomass Matrix (Apex Tissue)", 4, "Act III: The Perseus Veil", null
         ));
 
         this.upgrades = Collections.unmodifiableMap(map);
@@ -340,9 +352,13 @@ public class TechTree implements Serializable {
             throw new InsufficientBiomassException(u.getBiomassCost(), state.getAccumulatedBiomass());
         }
         if (u.getRequiredCargoPods() > 0 && state.countCargoSpecimens() < u.getRequiredCargoPods()) {
+            String cargoDesc = u.getRequiredCargoDescription() != null
+                    ? u.getRequiredCargoDescription()
+                    : String.format("%dx Harvested Biomass Matrix (Any Species)", u.getRequiredCargoPods());
             throw new IllegalStateException(String.format(
-                    "Specimens Missing: '%s' requires %d Harvested Cargo Specimen pod(s) in Flagship Cargo Hold (Currently in hold: %d).",
-                    u.getName(), u.getRequiredCargoPods(), state.countCargoSpecimens()));
+                    "Missing Required Cargo: '%s' requires %s in Flagship Cargo Hold (Currently in hold: %d/%d).\n"
+                    + "How to obtain: Reap any mature organic civilization world across the galaxy to secure its genetic Biomass Matrix.",
+                    u.getName(), cargoDesc, state.countCargoSpecimens(), u.getRequiredCargoPods()));
         }
 
         state.deductEezo(u.getEezoCost());
