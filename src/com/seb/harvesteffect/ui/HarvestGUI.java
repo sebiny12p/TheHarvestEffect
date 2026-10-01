@@ -529,15 +529,25 @@ public class HarvestGUI extends JFrame {
                             "FTL Reach Exceeded", JOptionPane.WARNING_MESSAGE);
                     return;
                 }
+                if (state.isFlagshipJumpedThisEpoch()) {
+                    JOptionPane.showMessageDialog(HarvestGUI.this,
+                            "Sovereign FTL Drive Core is discharging static electricity!\n\n"
+                            + "Sovereign can only make 1 FTL jump per epoch.\n"
+                            + "Advance the epoch to dissipate static charge, or deploy Biomechanical Swarms to reach this world.",
+                            "FTL Drive Discharging", JOptionPane.WARNING_MESSAGE);
+                    return;
+                }
                 try {
-                    int cost = engine.moveFlagship(selectedSector, selectedCluster);
+                    int cost = engine.moveFlagship(selectedSector, selectedCluster, true);
                     SoundEffects.playReaperHorn();
                     String sysName = state.getGalaxyMap().getSystem(selectedSector, selectedCluster).getSystemName();
-                    log(String.format("SOVEREIGN RELOCATED: Stationed in orbit around %s [%d, %d] (-%d Eezo).",
+                    log(String.format("SOVEREIGN RELOCATED: Stationed in orbit around %s [%d, %d] (-%d Eezo). Drive core discharging.",
                             sysName, selectedSector, selectedCluster, cost));
                     updateDisplay();
                 } catch (InsufficientEezoException ex) {
                     JOptionPane.showMessageDialog(HarvestGUI.this, ex.getMessage(), "Insufficient Eezo Reserves", JOptionPane.WARNING_MESSAGE);
+                } catch (ReaperException ex) {
+                    JOptionPane.showMessageDialog(HarvestGUI.this, ex.getMessage(), "Relocation Failed", JOptionPane.WARNING_MESSAGE);
                 }
             }
         });
@@ -844,10 +854,18 @@ public class HarvestGUI extends JFrame {
         for (String u : missionManager.getUnlockedUnits()) {
             int eCost = u.toLowerCase().contains("scion") ? 60 : (u.toLowerCase().contains("drone") ? 75 : 30);
             int bCost = u.toLowerCase().contains("scion") ? 140 : (u.toLowerCase().contains("drone") ? 0 : 50);
-            if (bCost > 0) {
-                cmbUnits.addItem(String.format("%s (%d Eezo, %d Bio)", u, eCost, bCost));
+            String role;
+            if (u.toLowerCase().contains("drone")) {
+                role = " [Catalyst: Growth Boost & Data Sapper]";
+            } else if (u.toLowerCase().contains("scion")) {
+                role = " [Siege: Smashes Barriers, +50% Yield, Shipyard Demolition]";
             } else {
-                cmbUnits.addItem(String.format("%s (%d Eezo)", u, eCost));
+                role = " [Assault: Infiltrates Barriers, Bio Harvester, Lab Raid]";
+            }
+            if (bCost > 0) {
+                cmbUnits.addItem(String.format("%s (%d Eezo, %d Bio)%s", u, eCost, bCost, role));
+            } else {
+                cmbUnits.addItem(String.format("%s (%d Eezo)%s", u, eCost, role));
             }
         }
         updateSeedingIntel();
@@ -1252,6 +1270,14 @@ public class HarvestGUI extends JFrame {
             engine.deployUnit(selectedSector, selectedCluster, unit);
             log(String.format("Biomechanical Swarm stationed: %s at [%d, %d].",
                     unit, selectedSector, selectedCluster));
+            String crucibleNotice = engine.getLastCrucibleNotice();
+            if (crucibleNotice != null && !crucibleNotice.isEmpty()) {
+                log(crucibleNotice);
+                JOptionPane.showMessageDialog(this,
+                        String.format("Biomechanical Swarm Stationed: %s at [%d, %d].\n\n%s",
+                                unit, selectedSector, selectedCluster, crucibleNotice),
+                        "Crucible Research Sabotaged", JOptionPane.INFORMATION_MESSAGE);
+            }
             checkMissionProgress();
         } catch (InsufficientEezoException e) {
             JOptionPane.showMessageDialog(this, e.getMessage(), "Insufficient Eezo Reserves", JOptionPane.WARNING_MESSAGE);
@@ -1270,6 +1296,11 @@ public class HarvestGUI extends JFrame {
             HarvestYield yield = engine.harvestSystem(selectedSector, selectedCluster);
             String msg = String.format("ASCENSION COMPLETE: Extracted %d Biomass and %d Dark Energy from %s.",
                     yield.getGeneticBiomass(), yield.getDarkEnergyYield(), yield.getOriginSpecies());
+            String crucibleNotice = engine.getLastCrucibleNotice();
+            if (crucibleNotice != null && !crucibleNotice.isEmpty()) {
+                log(crucibleNotice);
+                msg += "\n\n" + crucibleNotice;
+            }
             log(msg);
             checkMissionProgress();
             JOptionPane.showMessageDialog(this, msg, "Ascension Successful", JOptionPane.INFORMATION_MESSAGE);
@@ -2030,7 +2061,11 @@ public class HarvestGUI extends JFrame {
                     btnSeed.setBackground(new Color(40, 50, 65));
 
                     btnHarvest.setEnabled(true);
-                    btnHarvest.setText(String.format("⚡ ASCENSION HARVEST (+%d Eezo, +%d Bio)", estEezo, estBiomass));
+                    String crucibleTag = "";
+                    if (campaign != null && campaign.getCurrentAct() == CampaignManager.Act.ACT_4_CRUCIBLE_WAR) {
+                        crucibleTag = " [-10% Crucible]";
+                    }
+                    btnHarvest.setText(String.format("⚡ ASCENSION HARVEST (+%d Eezo, +%d Bio)%s", estEezo, estBiomass, crucibleTag));
                     btnHarvest.setBackground(new Color(230, 40, 40));
                 } else {
                     lblTargetStatus.setText(String.format("TARGET: %s [%d,%d]  |  SPECIES: %s (TIER %d/3)%s%s%s  |  POP: %dB  |  STATUS: INCUBATING (Advance Time to Grow)",
@@ -2120,10 +2155,17 @@ public class HarvestGUI extends JFrame {
                     boolean hasBio = state.getAccumulatedBiomass() >= uBio;
 
                     if (hasEezo && hasBio) {
+                        String sabotageTag = "";
+                        if (campaign != null && campaign.getCurrentAct() == CampaignManager.Act.ACT_4_CRUCIBLE_WAR
+                                && selectedSys.getCivilization() != null
+                                && selectedSys.getCivilization().getEvolutionaryTier() >= Civilization.TIER_INDUSTRIAL) {
+                            int r = selU.toLowerCase().contains("scion") ? 10 : (selU.toLowerCase().contains("husk") ? 6 : 4);
+                            sabotageTag = String.format(" [Raid: -%d%% Crucible]", r);
+                        }
                         if (uBio > 0) {
-                            btnDeployUnit.setText(String.format("Station %s (-%d Eezo, -%d Bio)", selU, uEezo, uBio));
+                            btnDeployUnit.setText(String.format("Station %s (-%d Eezo, -%d Bio)%s", selU, uEezo, uBio, sabotageTag));
                         } else {
-                            btnDeployUnit.setText(String.format("Station %s (-%d Eezo)", selU, uEezo));
+                            btnDeployUnit.setText(String.format("Station %s (-%d Eezo)%s", selU, uEezo, sabotageTag));
                         }
                         btnDeployUnit.setEnabled(true);
                     } else if (!hasEezo) {
@@ -2158,16 +2200,24 @@ public class HarvestGUI extends JFrame {
                     btnJumpFlagship.setText("👑 Sovereign Stationed Here");
                     btnJumpFlagship.setEnabled(false);
                     btnJumpFlagship.setBackground(new Color(50, 50, 60));
+                    btnJumpFlagship.setToolTipText("Sovereign Flagship is holding orbit over this world.");
+                } else if (state.isFlagshipJumpedThisEpoch()) {
+                    btnJumpFlagship.setText("⏳ Drive Discharging (1 Jump/Epoch)");
+                    btnJumpFlagship.setEnabled(false);
+                    btnJumpFlagship.setBackground(new Color(60, 45, 30));
+                    btnJumpFlagship.setToolTipText("Sovereign FTL Drive Core has accumulated static charge (1 jump/epoch limit). Advance epoch to discharge or deploy Swarms!");
                 } else {
                     int jumpCost = selectedSys.isRelayBeamActive() ? 0 : 25;
                     if (state.getEezoReserves() >= jumpCost) {
                         btnJumpFlagship.setText(jumpCost > 0 ? String.format("👑 Jump Sovereign (-%d Eezo)", jumpCost) : "👑 Jump Sovereign (Relay Free)");
                         btnJumpFlagship.setEnabled(true);
                         btnJumpFlagship.setBackground(new Color(180, 130, 20));
+                        btnJumpFlagship.setToolTipText("Relocate Sovereign Flagship to this star system (breaches barriers and boosts local harvest yields).");
                     } else {
                         btnJumpFlagship.setText(String.format("👑 Jump Sovereign (Need %d Eezo)", jumpCost));
                         btnJumpFlagship.setEnabled(false);
                         btnJumpFlagship.setBackground(new Color(60, 40, 45));
+                        btnJumpFlagship.setToolTipText("Insufficient Eezo to initiate FTL jump.");
                     }
                 }
             }
@@ -2403,6 +2453,10 @@ public class HarvestGUI extends JFrame {
         sb.append("Civilization genetic material successfully secured in cargo pods.");
 
         int successfulReaped = ripeSystems.size() - barrierDeflectedCount - cargoFullCount;
+        if (campaign != null && campaign.getCurrentAct() == CampaignManager.Act.ACT_4_CRUCIBLE_WAR && successfulReaped > 0) {
+            sb.append(String.format("\n\n[CRUCIBLE IMPACT] %d world(s) wiped out Allied shipyards! Crucible construction set back (Current: %d%%)!",
+                    successfulReaped, campaign.getCrucibleProgress()));
+        }
         log(String.format("BATCH HARVEST: Reaped %d worlds (+%d Eezo, +%d Bio).",
                 successfulReaped, totalEezo, totalBio));
         checkMissionProgress();

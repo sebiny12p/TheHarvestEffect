@@ -62,6 +62,20 @@ public class GalacticState {
         }
     }
 
+    private boolean flagshipJumpedThisEpoch = false;
+
+    public boolean isFlagshipJumpedThisEpoch() {
+        return flagshipJumpedThisEpoch;
+    }
+
+    public void setFlagshipJumpedThisEpoch(boolean jumped) {
+        this.flagshipJumpedThisEpoch = jumped;
+    }
+
+    public void resetFlagshipJumps() {
+        this.flagshipJumpedThisEpoch = false;
+    }
+
     public void moveFlagship(int sector, int cluster) {
         this.flagshipSector = sector;
         this.flagshipCluster = cluster;

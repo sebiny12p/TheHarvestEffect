@@ -77,6 +77,7 @@ public class SaveManager {
         public int lockdownCooldown = 0;
         public int flagshipSector = 0;
         public int flagshipCluster = 0;
+        public boolean flagshipJumpedThisEpoch = false;
         public boolean[] sectorsUnlocked = new boolean[] { true, false, false, false };
         public List<String> discoveredSignals = new ArrayList<String>();
         public List<String> decodedSignals = new ArrayList<String>();
@@ -310,6 +311,7 @@ public class SaveManager {
         // 6. Sovereign Flagship & Sectors
         state.flagshipSector = gs.getFlagshipSector();
         state.flagshipCluster = gs.getFlagshipCluster();
+        state.flagshipJumpedThisEpoch = gs.isFlagshipJumpedThisEpoch();
         state.sectorsUnlocked = new boolean[rowCount];
         for (int i = 0; i < rowCount; i++) {
             state.sectorsUnlocked[i] = gs.getGalaxyMap().isSectorUnlocked(i);
@@ -478,6 +480,7 @@ public class SaveManager {
 
         // Restore Sovereign Flagship & Sectors
         gs.moveFlagship(s.flagshipSector, s.flagshipCluster);
+        gs.setFlagshipJumpedThisEpoch(s.flagshipJumpedThisEpoch);
         if (s.sectorsUnlocked != null) {
             for (int i = 0; i < s.sectorsUnlocked.length && i < targetRows; i++) {
                 gs.getGalaxyMap().setSectorUnlocked(i, s.sectorsUnlocked[i]);

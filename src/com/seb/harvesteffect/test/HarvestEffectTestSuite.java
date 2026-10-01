@@ -60,6 +60,7 @@ public class HarvestEffectTestSuite {
         testMissionManagerProgressionAndSelectionTriggers();
         testBugFixesVerification();
         testCliCommandParserAndTerminalRenderer();
+        testSovereignMovementConstraintDroneSpecializationAndCrucibleWiping();
 
         System.out.println("==============================================================");
         System.out.printf("Test Results: %d/%d tests passed successfully!%n", passedTests, totalTests);
@@ -1674,5 +1675,97 @@ public class HarvestEffectTestSuite {
             mapRendered = false;
         }
         assertTrue("TerminalRenderer renderGalaxyMap renders all systems without errors", mapRendered);
+    }
+
+    private static void testSovereignMovementConstraintDroneSpecializationAndCrucibleWiping() {
+        System.out.println("\n[Test 41: Sovereign Movement Constraints, Drone Differentiation & Act 4 Planet Wiping]");
+        GalacticState state = new GalacticState("Sovereign", "Act 4 War");
+        ReaperEngine engine = new ReaperEngine(state);
+        state.addEezo(3000);
+        state.addBiomass(3000);
+
+        // 1. Sovereign 1-jump-per-epoch movement constraint
+        assertTrue("Sovereign initially can jump", engine.canFlagshipJump());
+        try {
+            engine.moveFlagship(0, 1, true);
+            assertTrue("Sovereign successfully made first jump", state.getFlagshipCluster() == 1);
+            assertTrue("Flagship marked as jumped this epoch", state.isFlagshipJumpedThisEpoch());
+            assertTrue("Engine reports cannot jump", !engine.canFlagshipJump());
+        } catch (Exception e) {
+            assertTrue("First jump should succeed: " + e.getMessage(), false);
+        }
+
+        // Attempt second jump in same epoch throws ReaperException
+        boolean secondJumpBlocked = false;
+        try {
+            engine.moveFlagship(0, 2, true);
+        } catch (ReaperException re) {
+            secondJumpBlocked = true;
+            assertTrue("Error mentions static electricity / 1 jump limit", re.getMessage().contains("discharging static electricity"));
+        } catch (Exception e) {
+            assertTrue("Wrong exception: " + e, false);
+        }
+        assertTrue("Second jump in same epoch strictly blocked", secondJumpBlocked);
+
+        // Advancing epoch discharges static electricity and allows jumping again
+        engine.advanceCycle();
+        assertTrue("Flagship can jump again after advancing cycle", engine.canFlagshipJump());
+        assertTrue("Flagship jumped flag reset", !state.isFlagshipJumpedThisEpoch());
+
+        // 2. Act 4 Planet Wiping lowers Crucible research
+        engine.getCampaign().setCurrentAct(CampaignManager.Act.ACT_4_CRUCIBLE_WAR);
+        engine.getCampaign().reduceCrucibleProgress(100);
+        // Set Crucible progress to 36%
+        engine.getCampaign().onEpochAdvance(state);
+        engine.getCampaign().onEpochAdvance(state);
+        int preWipeProgress = engine.getCampaign().getCrucibleProgress();
+        assertTrue("Crucible has active progress", preWipeProgress >= 36);
+
+        // Seed and grow an Apex civilization (Tier 3) on [0, 0]
+        try {
+            engine.seedCivilization(0, 0, "Humanity");
+            Civilization humanCiv = state.getGalaxyMap().getSystem(0, 0).getCivilization();
+            humanCiv.setEvolutionaryTier(Civilization.TIER_APEX_ZENITH);
+            assertTrue("Humanity is Tier 3 Apex Zenith", humanCiv.isHarvestReady());
+
+            HarvestYield yield = engine.harvestSystem(0, 0);
+            assertTrue("Harvest succeeded", yield != null);
+            assertTrue("Planet purged of civilization", state.getGalaxyMap().getSystem(0, 0).getCivilization() == null);
+            assertTrue("Wiping Tier 3 Apex world reduced Crucible progress by -10%",
+                    engine.getCampaign().getCrucibleProgress() == preWipeProgress - 10);
+            assertTrue("Crucible notice generated", engine.getLastCrucibleNotice() != null && engine.getLastCrucibleNotice().contains("-10%"));
+        } catch (Exception e) {
+            assertTrue("Wiping apex world failed: " + e.getMessage(), false);
+        }
+
+        // 3. Biomechanical Unit differentiation & Act 4 Crucible Sabotage
+        // Seed spacefaring civilizations on habitable clusters [0, 2], [0, 3], [0, 4]
+        int currentProgress = engine.getCampaign().getCrucibleProgress();
+        try {
+            // Deploy Collector Drone on spacefaring world [0, 2] -> -4%
+            engine.seedCivilization(0, 2, "Turian");
+            state.getGalaxyMap().getSystem(0, 2).getCivilization().setEvolutionaryTier(Civilization.TIER_INDUSTRIAL);
+            engine.deployUnit(0, 2, "Collector Drone");
+            assertTrue("Collector Drone reduced Crucible by -4%",
+                    engine.getCampaign().getCrucibleProgress() == currentProgress - 4);
+            currentProgress = engine.getCampaign().getCrucibleProgress();
+
+            // Deploy Husk Swarm on spacefaring world [0, 3] -> -6%
+            engine.seedCivilization(0, 3, "Salarian");
+            state.getGalaxyMap().getSystem(0, 3).getCivilization().setEvolutionaryTier(Civilization.TIER_INDUSTRIAL);
+            engine.deployUnit(0, 3, "Husk Swarm");
+            assertTrue("Husk Swarm reduced Crucible by -6%",
+                    engine.getCampaign().getCrucibleProgress() == currentProgress - 6);
+            currentProgress = engine.getCampaign().getCrucibleProgress();
+
+            // Deploy Scion Behemoth on spacefaring world [0, 4] -> -10%
+            engine.seedCivilization(0, 4, "Volus");
+            state.getGalaxyMap().getSystem(0, 4).getCivilization().setEvolutionaryTier(Civilization.TIER_INDUSTRIAL);
+            engine.deployUnit(0, 4, "Scion Behemoth");
+            assertTrue("Scion Behemoth reduced Crucible by -10%",
+                    engine.getCampaign().getCrucibleProgress() == currentProgress - 10);
+        } catch (Exception e) {
+            assertTrue("Drone sabotage test failed: " + e.getMessage(), false);
+        }
     }
 }

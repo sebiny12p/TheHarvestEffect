@@ -35,6 +35,7 @@ public class ReaperEngine implements Serializable {
     private final java.util.Set<String> sequencedGenomes;
     private boolean enforceGenomeResearch;
     private String lastLockdownNotice;
+    private String lastCrucibleNotice;
 
     public ReaperEngine(GalacticState state) {
         this.state = state;
@@ -237,6 +238,32 @@ public class ReaperEngine implements Serializable {
         unit.recharge(unit.getPowerCapacity());
         system.deployUnit(unit);
 
+        // In Act 4 (Crucible War): Specialized biomechanical units raid/sabotage Crucible research on spacefaring worlds!
+        if (campaign != null && campaign.getCurrentAct() == CampaignManager.Act.ACT_4_CRUCIBLE_WAR) {
+            Civilization targetCiv = system.getCivilization();
+            if (targetCiv != null && targetCiv.getEvolutionaryTier() >= Civilization.TIER_INDUSTRIAL) {
+                int reduction;
+                String desc;
+                if (unit instanceof ScionBehemoth) {
+                    reduction = 10;
+                    desc = "Biotic Shockwave Demolition pulverized Alliance Crucible assembly yards";
+                } else if (unit instanceof HuskSwarm) {
+                    reduction = 6;
+                    desc = "Cybernetic Ground Swarm assaulted and captured planetary Crucible research facilities";
+                } else {
+                    reduction = 4;
+                    desc = "Airborne Collector Drones infiltrated communications networks and corrupted Crucible telemetry";
+                }
+                campaign.reduceCrucibleProgress(reduction);
+                lastCrucibleNotice = String.format("[CRUCIBLE SABOTAGED] %s: %s on %s [%d,%d]! Crucible progress reduced by -%d%%! (Current: %d%%)",
+                        unit.getDesignation(), desc, system.getSystemName(), sector, cluster, reduction, campaign.getCrucibleProgress());
+            } else {
+                lastCrucibleNotice = null;
+            }
+        } else {
+            lastCrucibleNotice = null;
+        }
+
         // Easter Egg Trigger: Collector Drone deployed on Sur'Kesh while Salarians at Tier 2
         Civilization civ = system.getCivilization();
         if (unit instanceof CollectorDrone && sector == 0 && cluster == 3 && civ != null && civ.getEvolutionaryTier() >= 2) {
@@ -354,7 +381,29 @@ public class ReaperEngine implements Serializable {
         state.getCargoHold().store(yield);
         state.addBiomass(yield.getGeneticBiomass());
         state.addEezo(yield.getDarkEnergyYield());
+
+        int civTierBeforeHarvest = civ.getEvolutionaryTier();
+        String speciesBeforeHarvest = civ.getSpeciesName();
         system.purgeSystem();
+
+        // In Act 4 (The Crucible War): Wiping an organic civilization strikes a devastating blow to Crucible construction!
+        if (campaign != null && campaign.getCurrentAct() == CampaignManager.Act.ACT_4_CRUCIBLE_WAR) {
+            int reduction = 0;
+            if (civTierBeforeHarvest >= Civilization.TIER_APEX_ZENITH) { // Tier 3 Apex
+                reduction = 10;
+            } else if (civTierBeforeHarvest >= Civilization.TIER_INDUSTRIAL) { // Tier 2 Spacefaring
+                reduction = 5;
+            }
+            if (reduction > 0) {
+                campaign.reduceCrucibleProgress(reduction);
+                lastCrucibleNotice = String.format("[CRUCIBLE HIT] The fall and purge of %s destroyed Allied Crucible engineering shipyards! Crucible progress reduced by -%d%%! (Current: %d%%)",
+                        speciesBeforeHarvest, reduction, campaign.getCrucibleProgress());
+            } else {
+                lastCrucibleNotice = null;
+            }
+        } else {
+            lastCrucibleNotice = null;
+        }
 
         campaign.recordAscension();
         campaign.checkObjectiveProgress(state, techTree);
@@ -429,6 +478,24 @@ public class ReaperEngine implements Serializable {
     }
 
     public int moveFlagship(int targetSector, int targetCluster) throws InsufficientEezoException {
+        try {
+            return moveFlagship(targetSector, targetCluster, false);
+        } catch (ReaperException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public int moveFlagship(int targetSector, int targetCluster, boolean enforceSingleJumpLimit)
+            throws InsufficientEezoException, ReaperException {
+        if (!state.getGalaxyMap().isSectorUnlocked(targetSector)) {
+            throw new ReaperException(String.format("Sector %d (%s) is inaccessible. Build a Primary Mass Relay first.",
+                    targetSector, state.getGalaxyMap().getSectorShortName(targetSector)));
+        }
+        if (enforceSingleJumpLimit && state.isFlagshipJumpedThisEpoch()) {
+            throw new ReaperException(
+                    "Sovereign FTL Drive Core is discharging static electricity! (Limit: 1 Jump per Epoch).\n"
+                    + "Advance the epoch to dissipate static charge, or deploy Biomechanical Swarms to reach this system.");
+        }
         boolean relayDiscount = techTree.isUnlocked("secondary_relay_alignment");
         StarSystem sys = state.getGalaxyMap().getSystem(targetSector, targetCluster);
         int cost = 0;
@@ -444,7 +511,12 @@ public class ReaperEngine implements Serializable {
             state.deductEezo(cost);
         }
         state.moveFlagship(targetSector, targetCluster, false);
+        state.setFlagshipJumpedThisEpoch(true);
         return cost;
+    }
+
+    public boolean canFlagshipJump() {
+        return !state.isFlagshipJumpedThisEpoch();
     }
 
     public boolean hasGenesisProbeInCargo(String speciesKey) {
@@ -598,6 +670,7 @@ public class ReaperEngine implements Serializable {
             scanner.triggerSignal("conrad");
         }
 
+        state.resetFlagshipJumps();
         campaign.onEpochAdvance(state, techTree);
         this.lastLockdownNotice = (nexus != null) ? nexus.onEpochAdvance() : null;
         campaign.checkObjectiveProgress(state, techTree);
@@ -676,5 +749,9 @@ public class ReaperEngine implements Serializable {
 
     public String getLastLockdownNotice() {
         return lastLockdownNotice;
+    }
+
+    public String getLastCrucibleNotice() {
+        return lastCrucibleNotice;
     }
 }
