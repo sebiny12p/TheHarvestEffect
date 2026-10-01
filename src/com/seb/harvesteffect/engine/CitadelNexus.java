@@ -25,13 +25,20 @@ public class CitadelNexus implements Serializable {
     public static final int TIER_4_CONDUIT = 4;
     public static final int TIER_5_CATALYST = 5;
 
+    public static final int LOCKDOWN_ACTIVE_DURATION = 4;
+    public static final int LOCKDOWN_COOLDOWN_DURATION = 4;
+
     private int tier;
-    private boolean lockdownTriggered;
+    private boolean lockdownActive;
+    private int lockdownDurationRemaining;
+    private int lockdownCooldownRemaining;
     private final Map<String, Integer> requisitionCatalog;
 
     public CitadelNexus() {
         this.tier = TIER_1_DORMANT;
-        this.lockdownTriggered = false;
+        this.lockdownActive = false;
+        this.lockdownDurationRemaining = 0;
+        this.lockdownCooldownRemaining = 0;
 
         Map<String, Integer> map = new LinkedHashMap<String, Integer>();
         // 15 Species Genesis Probes
@@ -77,11 +84,29 @@ public class CitadelNexus implements Serializable {
     }
 
     public boolean isArmsLockdownActive() {
-        return lockdownTriggered;
+        return lockdownActive;
     }
 
-    public void setArmsLockdownTriggered(boolean lockdownTriggered) {
-        this.lockdownTriggered = lockdownTriggered;
+    public void setArmsLockdownTriggered(boolean active) {
+        this.lockdownActive = active;
+        this.lockdownDurationRemaining = active ? LOCKDOWN_ACTIVE_DURATION : 0;
+        if (!active) {
+            this.lockdownCooldownRemaining = 0;
+        }
+    }
+
+    public int getLockdownDurationRemaining() {
+        return lockdownDurationRemaining;
+    }
+
+    public int getLockdownCooldownRemaining() {
+        return lockdownCooldownRemaining;
+    }
+
+    public void restoreLockdownState(boolean active, int durationRemaining, int cooldownRemaining) {
+        this.lockdownActive = active;
+        this.lockdownDurationRemaining = Math.max(0, durationRemaining);
+        this.lockdownCooldownRemaining = Math.max(0, cooldownRemaining);
     }
 
     public void upgradeTier(GalacticState state) throws InsufficientEezoException, InsufficientBiomassException {
@@ -193,22 +218,47 @@ public class CitadelNexus implements Serializable {
     }
 
     public boolean isLockdownReady() {
-        return tier >= TIER_3_LOCKDOWN && !lockdownTriggered;
+        return tier >= TIER_3_LOCKDOWN && !lockdownActive && lockdownCooldownRemaining <= 0;
+    }
+
+    public String onEpochAdvance() {
+        if (lockdownActive) {
+            lockdownDurationRemaining--;
+            if (lockdownDurationRemaining <= 0) {
+                lockdownActive = false;
+                lockdownDurationRemaining = 0;
+                lockdownCooldownRemaining = LOCKDOWN_COOLDOWN_DURATION;
+                return "[CITADEL ARMS OPENED] The Citadel defense systems have overheated and the arms open again! Arms Lockdown is on cooldown for 4 epochs.";
+            }
+        } else if (lockdownCooldownRemaining > 0) {
+            lockdownCooldownRemaining--;
+            if (lockdownCooldownRemaining == 0) {
+                return "[CITADEL ARMS RECHARGED] Citadel defense conduits are fully recharged! Arms Lockdown is ready to deploy again.";
+            }
+        }
+        return null;
     }
 
     public String triggerCitadelLockdown(CampaignManager campaign) {
         if (tier < TIER_3_LOCKDOWN) {
             throw new IllegalStateException("Citadel Arms Lockdown requires Citadel Tier III.");
         }
-        if (lockdownTriggered) {
-            throw new IllegalStateException("Citadel Arms Lockdown has already been executed for this campaign.");
+        if (lockdownActive) {
+            throw new IllegalStateException(String.format(
+                    "Citadel Arms are already sealed shut! (%d epochs remaining).", lockdownDurationRemaining));
         }
-        lockdownTriggered = true;
+        if (lockdownCooldownRemaining > 0) {
+            throw new IllegalStateException(String.format(
+                    "Citadel defense conduits are recharging! (%d epochs cooldown remaining).", lockdownCooldownRemaining));
+        }
+        lockdownActive = true;
+        lockdownDurationRemaining = LOCKDOWN_ACTIVE_DURATION;
+        lockdownCooldownRemaining = 0;
         if (campaign != null && campaign.getCurrentAct() == CampaignManager.Act.ACT_4_CRUCIBLE_WAR) {
             campaign.reduceCrucibleProgress(25);
-            return "[CITADEL ARMS LOCKED] Sovereign closes the Citadel arms! Alliance fleets locked out. Crucible progress delayed by -25%!";
+            return "[CITADEL ARMS LOCKED] Sovereign closes the Citadel arms! Alliance fleets locked out. Crucible progress delayed by -25%! Arms will remain sealed for 4 epochs, freezing Crucible construction while you find solutions to lower research.";
         }
-        return "[CITADEL DEFENSE ENGAGED] Citadel perimeter locked down in dark space.";
+        return "[CITADEL DEFENSE ENGAGED] Citadel perimeter locked down in dark space for 4 epochs.";
     }
 
     public Map<String, Integer> getCatalog() {

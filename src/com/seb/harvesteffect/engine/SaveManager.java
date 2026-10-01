@@ -73,6 +73,8 @@ public class SaveManager {
         // Mega-Structure, Fleet, and Secret Sub-Space Signal Progression
         public int citadelTier = 1;
         public boolean armsLockdownActive = false;
+        public int lockdownDuration = 0;
+        public int lockdownCooldown = 0;
         public int flagshipSector = 0;
         public int flagshipCluster = 0;
         public boolean[] sectorsUnlocked = new boolean[] { true, false, false, false };
@@ -302,6 +304,8 @@ public class SaveManager {
         // 5. Citadel Nexus Mega-Structure
         state.citadelTier = engine.getNexus().getCurrentTier();
         state.armsLockdownActive = engine.getNexus().isArmsLockdownActive();
+        state.lockdownDuration = engine.getNexus().getLockdownDurationRemaining();
+        state.lockdownCooldown = engine.getNexus().getLockdownCooldownRemaining();
 
         // 6. Sovereign Flagship & Sectors
         state.flagshipSector = gs.getFlagshipSector();
@@ -470,7 +474,7 @@ public class SaveManager {
 
         // Restore Citadel Nexus Mega-Structure (without re-deducting Eezo/Biomass or re-triggering damage)
         engine.getNexus().setTier(Math.max(1, s.citadelTier));
-        engine.getNexus().setArmsLockdownTriggered(s.armsLockdownActive);
+        engine.getNexus().restoreLockdownState(s.armsLockdownActive, s.lockdownDuration, s.lockdownCooldown);
 
         // Restore Sovereign Flagship & Sectors
         gs.moveFlagship(s.flagshipSector, s.flagshipCluster);

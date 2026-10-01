@@ -300,12 +300,18 @@ public class CitadelNexusDialog extends JDialog {
             btnArmsLockdown.setText("CITADEL ARMS LOCKDOWN (Locked — Requires Citadel Tier III)");
             btnArmsLockdown.setEnabled(false);
             btnArmsLockdown.setBackground(new Color(60, 40, 45));
-        } else if (!nexus.isLockdownReady()) {
-            btnArmsLockdown.setText("CITADEL ARMS LOCKDOWN (Already Triggered for Campaign)");
+        } else if (nexus.isArmsLockdownActive()) {
+            btnArmsLockdown.setText(String.format("🔒 CITADEL ARMS SEALED SHUT (%d Epochs Left — Crucible Frozen)",
+                    nexus.getLockdownDurationRemaining()));
             btnArmsLockdown.setEnabled(false);
-            btnArmsLockdown.setBackground(new Color(60, 40, 45));
+            btnArmsLockdown.setBackground(new Color(20, 70, 90));
+        } else if (!nexus.isLockdownReady()) {
+            btnArmsLockdown.setText(String.format("⏳ ARMS CAPACITORS RECHARGING (%d Epochs Cooldown Remaining)",
+                    nexus.getLockdownCooldownRemaining()));
+            btnArmsLockdown.setEnabled(false);
+            btnArmsLockdown.setBackground(new Color(80, 50, 20));
         } else {
-            btnArmsLockdown.setText("⚡ CLOSE CITADEL ARMS (-25% CRUCIBLE PROGRESS)");
+            btnArmsLockdown.setText("⚡ CLOSE CITADEL ARMS (-25% & FREEZE CRUCIBLE FOR 4 EPOCHS)");
             btnArmsLockdown.setEnabled(true);
             btnArmsLockdown.setBackground(new Color(200, 30, 30));
         }
@@ -386,7 +392,13 @@ public class CitadelNexusDialog extends JDialog {
         try {
             String msg = nexus.triggerCitadelLockdown(campaign);
             SoundEffects.playReaperHorn();
-            JOptionPane.showMessageDialog(this, msg, "Citadel Arms Closed", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this,
+                    msg + "\n\nCRUCIBLE RESEARCH IS FROZEN FOR 4 EPOCHS.\n"
+                    + "During these 4 epochs, find solutions to lower crucible research before the arms reopen:\n"
+                    + "  • Deploy Swarm Garrisons on spacefaring worlds to block Allied research.\n"
+                    + "  • Research Crucible Sabotage Protocols in the Tech Tree.\n"
+                    + "  • Requisition Sovereign Armor to endure the conflict.",
+                    "Citadel Arms Closed", JOptionPane.INFORMATION_MESSAGE);
             updateUIState();
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Lockdown Error", JOptionPane.WARNING_MESSAGE);

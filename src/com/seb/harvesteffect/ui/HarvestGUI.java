@@ -766,16 +766,37 @@ public class HarvestGUI extends JFrame {
                     JOptionPane.showMessageDialog(HarvestGUI.this, info, "Citadel Arms Lockdown Protocol", JOptionPane.INFORMATION_MESSAGE);
                     return;
                 }
-                if (!nexus.isLockdownReady()) {
+                if (nexus.isArmsLockdownActive()) {
                     JOptionPane.showMessageDialog(HarvestGUI.this,
-                            "Citadel Arms Lockdown has already been triggered for this cycle.",
-                            "Lockdown Exhausted", JOptionPane.INFORMATION_MESSAGE);
+                            String.format("The Citadel arms are currently sealed shut!\n\n"
+                                    + "Crucible research is completely frozen for %d more epoch(s).\n\n"
+                                    + "FIND SOLUTIONS BEFORE ARMS REOPEN:\n"
+                                    + "  1. Station Swarm Garrisons on spacefaring worlds to permanently block their +3% research rate.\n"
+                                    + "  2. Research 'Crucible Sabotage Protocols' in the Tech Tree.\n"
+                                    + "  3. Requisition Sovereign Armor upgrades.\n"
+                                    + "  4. Harvest mature civilizations to race toward victory!",
+                                    nexus.getLockdownDurationRemaining()),
+                            "Citadel Arms Sealed", JOptionPane.INFORMATION_MESSAGE);
+                    return;
+                }
+                if (nexus.getLockdownCooldownRemaining() > 0) {
+                    JOptionPane.showMessageDialog(HarvestGUI.this,
+                            String.format("Citadel defense conduits are currently recharging (%d epochs cooldown remaining).\n"
+                                    + "The arms cannot be closed again until the recharge cycle finishes.",
+                                    nexus.getLockdownCooldownRemaining()),
+                            "Lockdown Recharging", JOptionPane.WARNING_MESSAGE);
                     return;
                 }
                 SoundEffects.playReaperHorn();
                 String msg = nexus.triggerCitadelLockdown(campaign);
-                JOptionPane.showMessageDialog(HarvestGUI.this, msg, "Arms Lockdown Engaged", JOptionPane.INFORMATION_MESSAGE);
-                log("CITADEL ARMS LOCKDOWN ENGAGED: Crucible construction severely disrupted (-25% progress)!");
+                JOptionPane.showMessageDialog(HarvestGUI.this,
+                        msg + "\n\nCRUCIBLE RESEARCH IS FROZEN FOR 4 EPOCHS.\n"
+                                + "Use these 4 epochs to find solutions to lower crucible research before the arms reopen:\n"
+                                + "  • Deploy Swarm Garrisons (Drones, Husks, Scions) to block spacefaring research labs.\n"
+                                + "  • Research Crucible Sabotage Protocols in the Tech Tree.\n"
+                                + "  • Harvest mature crops to trigger Act V convergence.",
+                        "Arms Lockdown Engaged", JOptionPane.INFORMATION_MESSAGE);
+                log("CITADEL ARMS LOCKDOWN ENGAGED: Arms sealed for 4 epochs (-25% Crucible progress, research frozen)!");
                 updateDisplay();
             }
         });
@@ -1838,17 +1859,24 @@ public class HarvestGUI extends JFrame {
         if (campaign.getCurrentAct() == CampaignManager.Act.ACT_4_CRUCIBLE_WAR) {
             barCrucible.setVisible(true);
             barCrucible.setValue(campaign.getCrucibleProgress());
-            List<String> unattended = campaign.getUnattendedResearchWorldNames(state);
-            String extra;
-            if (!unattended.isEmpty()) {
-                String worldList = String.join(", ", unattended);
-                if (worldList.length() > 40) worldList = worldList.substring(0, 37) + "...";
-                extra = String.format(" (Accelerated +%d%%: %s — Deploy Swarm Garrison to block labs!)",
-                        unattended.size() * 3, worldList);
+            if (engine.getNexus() != null && engine.getNexus().isArmsLockdownActive()) {
+                barCrucible.setString(String.format("🔒 CITADEL ARMS LOCKED: Crucible Construction FROZEN (%d%%) — %d Epoch(s) Remaining to Find Solutions!",
+                        campaign.getCrucibleProgress(), engine.getNexus().getLockdownDurationRemaining()));
+                barCrucible.setForeground(new Color(0, 220, 255));
             } else {
-                extra = " (All spacefaring labs suppressed by Swarm Garrisons)";
+                barCrucible.setForeground(new Color(230, 40, 40));
+                List<String> unattended = campaign.getUnattendedResearchWorldNames(state);
+                String extra;
+                if (!unattended.isEmpty()) {
+                    String worldList = String.join(", ", unattended);
+                    if (worldList.length() > 40) worldList = worldList.substring(0, 37) + "...";
+                    extra = String.format(" (Accelerated +%d%%: %s — Deploy Swarm Garrison to block labs!)",
+                            unattended.size() * 3, worldList);
+                } else {
+                    extra = " (All spacefaring labs suppressed by Swarm Garrisons)";
+                }
+                barCrucible.setString("CRITICAL THREAT: Crucible Completion: " + campaign.getCrucibleProgress() + "%" + extra);
             }
-            barCrucible.setString("CRITICAL THREAT: Crucible Completion: " + campaign.getCrucibleProgress() + "%" + extra);
         } else {
             barCrucible.setVisible(false);
         }
@@ -1890,13 +1918,17 @@ public class HarvestGUI extends JFrame {
                 btnCitadelLockdown.setText("🔒 Arms Lockdown (Tier III)");
                 btnCitadelLockdown.setToolTipText("Requires Citadel Nexus Tier III. Research 'Citadel Core Security Override' in the Tech Tree.");
                 btnCitadelLockdown.setBackground(new Color(110, 35, 45));
-            } else if (!n.isLockdownReady()) {
-                btnCitadelLockdown.setText("🔒 Lockdown Expended");
-                btnCitadelLockdown.setToolTipText("Citadel Arms Lockdown has already been deployed for this cycle.");
-                btnCitadelLockdown.setBackground(new Color(60, 40, 45));
+            } else if (n.isArmsLockdownActive()) {
+                btnCitadelLockdown.setText(String.format("🔒 Arms Sealed (%d ep left) [Crucible Frozen]", n.getLockdownDurationRemaining()));
+                btnCitadelLockdown.setToolTipText("Citadel arms are sealed shut! Crucible research is completely frozen. Find solutions before arms open.");
+                btnCitadelLockdown.setBackground(new Color(0, 150, 200));
+            } else if (n.getLockdownCooldownRemaining() > 0) {
+                btnCitadelLockdown.setText(String.format("⏳ Recharging (%d ep cooldown)", n.getLockdownCooldownRemaining()));
+                btnCitadelLockdown.setToolTipText("Citadel conduits are recharging. Cannot close arms for " + n.getLockdownCooldownRemaining() + " more epochs.");
+                btnCitadelLockdown.setBackground(new Color(90, 60, 30));
             } else {
-                btnCitadelLockdown.setText("⚡ Engage Arms Lockdown (-25% Crucible)");
-                btnCitadelLockdown.setToolTipText("Rotate and seal the Citadel arms to delay Crucible completion by -25%.");
+                btnCitadelLockdown.setText("⚡ Close Arms (-25% & Freeze 4 Ep)");
+                btnCitadelLockdown.setToolTipText("Engage Citadel Arms Lockdown: Knocks back Crucible by -25% and freezes research for 4 epochs!");
                 btnCitadelLockdown.setBackground(new Color(200, 30, 30));
             }
         }
@@ -2236,6 +2268,10 @@ public class HarvestGUI extends JFrame {
         GalacticPhenomenon phen = engine.advanceCycle();
         log(String.format("[EPOCH ADVANCED] Cycle Epoch %d (%s). Cosmic Phenomenon: %s.",
                 state.getCycleEpoch(), state.getCosmicSeason(), phen.getTitle()));
+        String lockdownNotice = engine.getLastLockdownNotice();
+        if (lockdownNotice != null && !lockdownNotice.isEmpty()) {
+            log(lockdownNotice);
+        }
         checkMissionProgress();
         updateDisplay();
     }

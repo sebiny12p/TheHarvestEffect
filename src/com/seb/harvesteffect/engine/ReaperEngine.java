@@ -34,6 +34,7 @@ public class ReaperEngine implements Serializable {
     private final Random random;
     private final java.util.Set<String> sequencedGenomes;
     private boolean enforceGenomeResearch;
+    private String lastLockdownNotice;
 
     public ReaperEngine(GalacticState state) {
         this.state = state;
@@ -598,6 +599,7 @@ public class ReaperEngine implements Serializable {
         }
 
         campaign.onEpochAdvance(state, techTree);
+        this.lastLockdownNotice = (nexus != null) ? nexus.onEpochAdvance() : null;
         campaign.checkObjectiveProgress(state, techTree);
         return chosen;
     }
@@ -670,5 +672,9 @@ public class ReaperEngine implements Serializable {
 
     public SubSpaceScanner getScanner() {
         return scanner;
+    }
+
+    public String getLastLockdownNotice() {
+        return lastLockdownNotice;
     }
 }

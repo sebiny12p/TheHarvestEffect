@@ -142,6 +142,12 @@ public class CampaignManager {
 
     public void onEpochAdvance(GalacticState state, TechTree techTree) {
         if (currentAct == Act.ACT_4_CRUCIBLE_WAR) {
+            // Check if Citadel Arms Lockdown is active: arms sealed shut halts all Crucible construction
+            boolean armsClosed = (state != null && state.getCitadelNexus() != null && state.getCitadelNexus().isArmsLockdownActive());
+            if (armsClosed) {
+                return; // Crucible research completely frozen while Citadel arms are locked
+            }
+
             int progressInc = 18;
 
             // Unattended Spacefaring (Tier 2) and Apex (Tier 3) civilizations actively pool research for the Crucible!

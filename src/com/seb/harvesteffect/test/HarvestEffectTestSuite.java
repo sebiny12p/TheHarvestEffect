@@ -663,6 +663,7 @@ public class HarvestEffectTestSuite {
         System.out.println("\n[Test 23: Citadel Nexus Mega-Structure Progression & Lockdown]");
         GalacticState state = new GalacticState("Harbinger", "Cycle 1");
         CitadelNexus nexus = new CitadelNexus();
+        state.setCitadelNexus(nexus);
         TechTree techTree = new TechTree();
         CampaignManager campaign = new CampaignManager();
 
@@ -724,6 +725,7 @@ public class HarvestEffectTestSuite {
         assertTrue("Lockdown execution returned confirmation", result.contains("CITADEL ARMS LOCKED"));
         assertTrue("Crucible progress delayed by -25%", campaign.getCrucibleProgress() == Math.max(0, preCrucible - 25));
         assertTrue("Lockdown is marked triggered", nexus.isArmsLockdownActive());
+        assertTrue("Lockdown active duration is 4 epochs", nexus.getLockdownDurationRemaining() == 4);
 
         // 6. Attempt duplicate lockdown throws IllegalStateException
         boolean duplicateCaught = false;
@@ -733,6 +735,61 @@ public class HarvestEffectTestSuite {
             duplicateCaught = true;
         }
         assertTrue("Duplicate lockdown activation correctly prevented", duplicateCaught);
+
+        // 7. Verify Crucible is frozen during the 4 active lockdown epochs
+        int frozenProgress = campaign.getCrucibleProgress();
+        for (int epoch = 1; epoch <= 3; epoch++) {
+            campaign.onEpochAdvance(state);
+            String notice = nexus.onEpochAdvance();
+            assertTrue("Notice is null while lockdown remains active", notice == null);
+            assertTrue("Crucible progress remains frozen at " + frozenProgress + "%", campaign.getCrucibleProgress() == frozenProgress);
+            assertTrue("Lockdown is still active", nexus.isArmsLockdownActive());
+            assertTrue("Lockdown remaining epochs is " + (4 - epoch), nexus.getLockdownDurationRemaining() == 4 - epoch);
+        }
+
+        // 4th epoch advance - arms open!
+        campaign.onEpochAdvance(state);
+        assertTrue("Crucible progress remained frozen through 4th epoch", campaign.getCrucibleProgress() == frozenProgress);
+        String openNotice = nexus.onEpochAdvance();
+        assertTrue("Arms opened notice received", openNotice != null && openNotice.contains("CITADEL ARMS OPENED"));
+        assertTrue("Lockdown is no longer active", !nexus.isArmsLockdownActive());
+        assertTrue("Lockdown duration is 0", nexus.getLockdownDurationRemaining() == 0);
+        assertTrue("Cooldown is 4 epochs", nexus.getLockdownCooldownRemaining() == 4);
+        assertTrue("Lockdown not ready while on cooldown", !nexus.isLockdownReady());
+
+        // Cooldown prevents reactivation
+        boolean cooldownBlocked = false;
+        try {
+            nexus.activateArmsLockdown(campaign);
+        } catch (IllegalStateException ex) {
+            cooldownBlocked = true;
+        }
+        assertTrue("Lockdown blocked while cooling down", cooldownBlocked);
+
+        // Cooldown ticks down over 4 epochs (Crucible resumes advancing)
+        for (int cd = 1; cd <= 3; cd++) {
+            campaign.onEpochAdvance(state);
+            String cdNotice = nexus.onEpochAdvance();
+            assertTrue("Cooldown notice is null until finish", cdNotice == null);
+            assertTrue("Crucible resumes advancing during cooldown", campaign.getCrucibleProgress() > frozenProgress);
+            assertTrue("Cooldown remaining decrements to " + (4 - cd), nexus.getLockdownCooldownRemaining() == 4 - cd);
+            assertTrue("Lockdown still not ready", !nexus.isLockdownReady());
+        }
+
+        // 4th cooldown epoch finishes - recharged!
+        campaign.onEpochAdvance(state);
+        String rechargeNotice = nexus.onEpochAdvance();
+        assertTrue("Recharge notice received", rechargeNotice != null && rechargeNotice.contains("CITADEL ARMS RECHARGED"));
+        assertTrue("Cooldown is 0", nexus.getLockdownCooldownRemaining() == 0);
+        assertTrue("Lockdown is ready again", nexus.isLockdownReady());
+
+        // Trigger lockdown a second time!
+        int crucibleBeforeSecond = campaign.getCrucibleProgress();
+        String secondLockdown = nexus.activateArmsLockdown(campaign);
+        assertTrue("Second lockdown engaged successfully", secondLockdown.contains("CITADEL ARMS LOCKED"));
+        assertTrue("Crucible delayed again by -25%", campaign.getCrucibleProgress() == Math.max(0, crucibleBeforeSecond - 25));
+        assertTrue("Lockdown is active again", nexus.isArmsLockdownActive());
+        assertTrue("Lockdown duration is 4", nexus.getLockdownDurationRemaining() == 4);
     }
 
     private static void testBranchingArmadaResearchMatrixAndSectorUnlocks() {
@@ -921,6 +978,8 @@ public class HarvestEffectTestSuite {
                     loadedEngine.getNexus().getCurrentTier() == 3);
             assertTrue("Citadel arms lockdown state restored",
                     loadedEngine.getNexus().isArmsLockdownActive());
+            assertTrue("Citadel arms lockdown duration restored",
+                    loadedEngine.getNexus().getLockdownDurationRemaining() == 4);
 
             // Verify resolved dilemmas were restored
             assertTrue("Act 0 dilemma resolved status preserved",
