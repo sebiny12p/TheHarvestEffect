@@ -75,6 +75,7 @@ public class HarvestGUI extends JFrame {
     private JComboBox<String> cmbSpecies;
     private JComboBox<String> cmbUnits;
     private JButton btnTerraform;
+    private JButton btnCitadelLockdown;
     private JLabel lblCitadelHubStats;
     private JLabel lblConduitCorridors;
     private int selectedSector = 0;
@@ -735,7 +736,7 @@ public class HarvestGUI extends JFrame {
             }
         });
 
-        JButton btnCitadelLockdown = new JButton("🔒 Arms Lockdown");
+        btnCitadelLockdown = new JButton("🔒 Arms Lockdown");
         btnCitadelLockdown.setFont(new Font("SansSerif", Font.BOLD, 11));
         btnCitadelLockdown.setBackground(new Color(140, 40, 50));
         btnCitadelLockdown.setForeground(Color.WHITE);
@@ -745,9 +746,24 @@ public class HarvestGUI extends JFrame {
             public void actionPerformed(ActionEvent e) {
                 CitadelNexus nexus = engine.getNexus();
                 if (nexus.getTier() < CitadelNexus.TIER_3_LOCKDOWN) {
-                    JOptionPane.showMessageDialog(HarvestGUI.this,
-                            "Citadel Arms Lockdown requires Citadel Nexus Tier III or higher.\nUpgrade the Citadel Mega-Structure first!",
-                            "Lockdown Unavailable", JOptionPane.WARNING_MESSAGE);
+                    String info = "=== CITADEL ARMS LOCKDOWN PROTOCOL ===\n\n"
+                            + "STATUS: OFFLINE (Requires Citadel Nexus Tier III or higher)\n"
+                            + "Current Level: " + nexus.getTierName() + "\n\n"
+                            + "PURPOSE OF CITADEL LOCKDOWN:\n"
+                            + "  • During Act IV (The Crucible War), organic civilizations construct the Crucible.\n"
+                            + "  • Engaging Arms Lockdown physically rotates and seals the massive Citadel arms shut,\n"
+                            + "    delaying Allied Crucible construction progress by -25%!\n\n"
+                            + "THE 5 CITADEL MEGA-STRUCTURE TIERS:\n"
+                            + "  • Tier I: Dormant Dark Space Hub (Initial baseline)\n"
+                            + "  • Tier II: Keeper Indoctrination Pylon (+40 Eezo/epoch, -20% requisition discount)\n"
+                            + "  • Tier III: Citadel Arms Lockdown Grid (Unlocks Lockdown Defense Array)\n"
+                            + "  • Tier IV: Dark Energy Conduit Lattice (+75 Eezo/epoch, +25% harvest yield)\n"
+                            + "  • Tier V: Catalyst Convergence Core (Full AI Heresy Immunity, +150 Eezo/epoch)\n\n"
+                            + "HOW TO PROGRESS TO TIER III:\n"
+                            + "  1. Upgrade to Tier II in Citadel Nexus.\n"
+                            + "  2. Research 'Citadel Core Security Override' in the Tech Tree (Branch 4).\n"
+                            + "  3. Upgrade to Tier III in the Citadel Nexus.";
+                    JOptionPane.showMessageDialog(HarvestGUI.this, info, "Citadel Arms Lockdown Protocol", JOptionPane.INFORMATION_MESSAGE);
                     return;
                 }
                 if (!nexus.isLockdownReady()) {
@@ -1867,6 +1883,22 @@ public class HarvestGUI extends JFrame {
             CitadelNexus n = engine.getNexus();
             lblCitadelHubStats.setText(String.format("🏛️ CITADEL NEXUS // %s  |  PASSIVE DIVIDENDS: +%d Eezo/Epoch",
                     n.getTierName(), n.getPassiveEezoDividend()));
+        }
+        if (btnCitadelLockdown != null && engine.getNexus() != null) {
+            CitadelNexus n = engine.getNexus();
+            if (n.getTier() < CitadelNexus.TIER_3_LOCKDOWN) {
+                btnCitadelLockdown.setText("🔒 Arms Lockdown (Tier III)");
+                btnCitadelLockdown.setToolTipText("Requires Citadel Nexus Tier III. Research 'Citadel Core Security Override' in the Tech Tree.");
+                btnCitadelLockdown.setBackground(new Color(110, 35, 45));
+            } else if (!n.isLockdownReady()) {
+                btnCitadelLockdown.setText("🔒 Lockdown Expended");
+                btnCitadelLockdown.setToolTipText("Citadel Arms Lockdown has already been deployed for this cycle.");
+                btnCitadelLockdown.setBackground(new Color(60, 40, 45));
+            } else {
+                btnCitadelLockdown.setText("⚡ Engage Arms Lockdown (-25% Crucible)");
+                btnCitadelLockdown.setToolTipText("Rotate and seal the Citadel arms to delay Crucible completion by -25%.");
+                btnCitadelLockdown.setBackground(new Color(200, 30, 30));
+            }
         }
         if (lblConduitCorridors != null) {
             StringBuilder csb = new StringBuilder("CONDUIT STATUS: ");

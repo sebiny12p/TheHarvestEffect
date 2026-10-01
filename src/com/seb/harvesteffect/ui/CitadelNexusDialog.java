@@ -104,6 +104,18 @@ public class CitadelNexusDialog extends JDialog {
                 "CITADEL MEGA-STRUCTURE AWAKENING", 0, 0,
                 new Font("Monospaced", Font.BOLD, 12), new Color(255, 200, 60)));
 
+        JLabel lblRoadmap = new JLabel(
+                "<html><center><div style='padding: 3px; font-family: monospace;'>"
+                + "<b>5-TIER MEGA-STRUCTURE PATH:</b> "
+                + "<span style='color: #00E6FF;'>[I: Dormant]</span> ➔ "
+                + "<span style='color: #FFD700;'>[II: Keepers]</span> ➔ "
+                + "<span style='color: #FF5555;'>[III: Lockdown Array]</span> ➔ "
+                + "<span style='color: #B070FF;'>[IV: Conduit]</span> ➔ "
+                + "<span style='color: #00FF90;'>[V: Catalyst]</span>"
+                + "</div></center></html>",
+                SwingConstants.CENTER);
+        upgradePod.add(lblRoadmap, BorderLayout.NORTH);
+
         btnUpgradeCitadel = new JButton("UPGRADE CITADEL");
         btnUpgradeCitadel.setFont(new Font("SansSerif", Font.BOLD, 13));
         btnUpgradeCitadel.setBackground(new Color(200, 120, 20));
@@ -267,7 +279,8 @@ public class CitadelNexusDialog extends JDialog {
             boolean techOk = (nexus.getTier() < 2) || (techTree != null && techTree.isUnlocked("citadel_core_control"));
 
             if (!techOk) {
-                btnUpgradeCitadel.setText(String.format("UPGRADE LOCKED: Requires 'Citadel Core Control' in Tech Tree"));
+                btnUpgradeCitadel.setText("UPGRADE TO TIER III LOCKED: Research 'Citadel Core Control' in Tech Tree (Branch 4)");
+                btnUpgradeCitadel.setToolTipText("Research Citadel Core Security Override under Citadel & Fleet Economy in the Tech Tree to unlock Tiers III and IV.");
                 btnUpgradeCitadel.setEnabled(false);
                 btnUpgradeCitadel.setBackground(new Color(60, 40, 45));
             } else if (!canAfford) {
