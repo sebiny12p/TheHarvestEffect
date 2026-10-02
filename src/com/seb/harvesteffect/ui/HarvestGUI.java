@@ -70,6 +70,7 @@ public class HarvestGUI extends JFrame {
     private JButton btnCodex;
     private JButton btnAudioToggle;
     private JButton btnScanner;
+    private JButton btnQuickFreq;
     private JButton btnJumpFlagship;
     private Timer realTimeTimer;
     private boolean realTimePaused = false;
@@ -493,19 +494,19 @@ public class HarvestGUI extends JFrame {
         bottomPanel.add(coreActionsPanel);
         bottomPanel.add(Box.createVerticalStrut(6));
 
-        // 3. Secondary Dock: Swarm & Auxiliaries
-        JPanel secondaryDock = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 2));
-        secondaryDock.setBackground(new Color(16, 20, 30));
-        secondaryDock.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0, new Color(40, 50, 70)));
+        // 3a. Tactical Swarm Garrison & Flagship Operations Dock
+        JPanel swarmDock = new JPanel(new FlowLayout(FlowLayout.CENTER, 8, 2));
+        swarmDock.setBackground(new Color(16, 20, 30));
+        swarmDock.setBorder(BorderFactory.createMatteBorder(1, 0, 0, 0, new Color(40, 50, 70)));
 
         JLabel lblSwarm = new JLabel("SWARM GARRISON:");
         lblSwarm.setFont(new Font("Monospaced", Font.BOLD, 11));
         lblSwarm.setForeground(new Color(0, 200, 255));
-        secondaryDock.add(lblSwarm);
+        swarmDock.add(lblSwarm);
 
         cmbUnits = new JComboBox<String>();
         cmbUnits.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        secondaryDock.add(cmbUnits);
+        swarmDock.add(cmbUnits);
 
         btnDeployUnit = new JButton("Station Swarm");
         btnDeployUnit.setFont(new Font("SansSerif", Font.PLAIN, 11));
@@ -516,7 +517,7 @@ public class HarvestGUI extends JFrame {
                 deploySelectedUnit();
             }
         });
-        secondaryDock.add(btnDeployUnit);
+        swarmDock.add(btnDeployUnit);
 
         btnMoveUnit = new JButton("🚀 Move Drone");
         btnMoveUnit.setFont(new Font("SansSerif", Font.BOLD, 11));
@@ -530,7 +531,7 @@ public class HarvestGUI extends JFrame {
                 showRelocateUnitDialog();
             }
         });
-        secondaryDock.add(btnMoveUnit);
+        swarmDock.add(btnMoveUnit);
 
         btnDismantleUnit = new JButton("♻️ Dismantle Drone");
         btnDismantleUnit.setFont(new Font("SansSerif", Font.BOLD, 11));
@@ -544,7 +545,7 @@ public class HarvestGUI extends JFrame {
                 dismantleStationedUnitAction();
             }
         });
-        secondaryDock.add(btnDismantleUnit);
+        swarmDock.add(btnDismantleUnit);
 
         btnJumpFlagship = new JButton("👑 Jump Sovereign");
         btnJumpFlagship.setFont(new Font("SansSerif", Font.BOLD, 11));
@@ -581,82 +582,7 @@ public class HarvestGUI extends JFrame {
                 }
             }
         });
-        secondaryDock.add(btnJumpFlagship);
-        secondaryDock.add(Box.createHorizontalStrut(6));
-
-        btnTechTree = new JButton("🔬 Research");
-        btnTechTree.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        btnTechTree.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                SoundEffects.playUiClick();
-                showTechTreeDialog();
-            }
-        });
-        secondaryDock.add(btnTechTree);
-
-        btnNexus = new JButton("🏛️ Citadel Nexus");
-        btnNexus.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        btnNexus.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                SoundEffects.playUiClick();
-                showNexusDialog();
-            }
-        });
-        secondaryDock.add(btnNexus);
- 
-        btnEconomy = new JButton("📊 Economy");
-        btnEconomy.setFont(new Font("SansSerif", Font.BOLD, 11));
-        btnEconomy.setBackground(new Color(25, 90, 140));
-        btnEconomy.setForeground(Color.WHITE);
-        btnEconomy.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                SoundEffects.playUiClick();
-                showGalacticEconomyDialog();
-            }
-        });
-        secondaryDock.add(btnEconomy);
-
-        btnAlmanac = new JButton("🌾 Crop Almanac");
-        btnAlmanac.setFont(new Font("SansSerif", Font.BOLD, 11));
-        btnAlmanac.setBackground(new Color(35, 110, 60));
-        btnAlmanac.setForeground(Color.WHITE);
-        btnAlmanac.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                SoundEffects.playUiClick();
-                showCropAlmanacDialog();
-            }
-        });
-        secondaryDock.add(btnAlmanac);
-
-        btnBioBanks = new JButton("🧬 Bio-Banks");
-        btnBioBanks.setFont(new Font("SansSerif", Font.BOLD, 11));
-        btnBioBanks.setBackground(new Color(110, 40, 140));
-        btnBioBanks.setForeground(Color.WHITE);
-        btnBioBanks.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                SoundEffects.playUiClick();
-                showBioBankGenomeDialog();
-            }
-        });
-        secondaryDock.add(btnBioBanks);
-
-        btnCargoHold = new JButton("📦 Cargo Hold");
-        btnCargoHold.setFont(new Font("SansSerif", Font.BOLD, 11));
-        btnCargoHold.setBackground(new Color(25, 90, 110));
-        btnCargoHold.setForeground(Color.WHITE);
-        btnCargoHold.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                SoundEffects.playUiClick();
-                showCargoHoldDialog();
-            }
-        });
-        secondaryDock.add(btnCargoHold);
+        swarmDock.add(btnJumpFlagship);
 
         btnTimeMode = new JButton("⏱ Mode: Turn-Based");
         btnTimeMode.setFont(new Font("SansSerif", Font.BOLD, 11));
@@ -669,9 +595,88 @@ public class HarvestGUI extends JFrame {
                 toggleTimeModeAction();
             }
         });
-        secondaryDock.add(btnTimeMode);
+        swarmDock.add(btnTimeMode);
 
-        btnMissionBriefing = new JButton("📜 Mission Directives");
+        // 3b. Empire Systems & Sub-Space Frequency Receiver Dock
+        JPanel systemsDock = new JPanel(new FlowLayout(FlowLayout.CENTER, 6, 2));
+        systemsDock.setBackground(new Color(13, 17, 26));
+        systemsDock.setBorder(BorderFactory.createMatteBorder(1, 0, 1, 0, new Color(35, 45, 65)));
+
+        btnTechTree = new JButton("🔬 Research");
+        btnTechTree.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        btnTechTree.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                SoundEffects.playUiClick();
+                showTechTreeDialog();
+            }
+        });
+        systemsDock.add(btnTechTree);
+
+        btnNexus = new JButton("🏛️ Citadel Nexus");
+        btnNexus.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        btnNexus.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                SoundEffects.playUiClick();
+                showNexusDialog();
+            }
+        });
+        systemsDock.add(btnNexus);
+
+        btnEconomy = new JButton("📊 Economy");
+        btnEconomy.setFont(new Font("SansSerif", Font.BOLD, 11));
+        btnEconomy.setBackground(new Color(25, 90, 140));
+        btnEconomy.setForeground(Color.WHITE);
+        btnEconomy.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                SoundEffects.playUiClick();
+                showGalacticEconomyDialog();
+            }
+        });
+        systemsDock.add(btnEconomy);
+
+        btnAlmanac = new JButton("🌾 Crop Almanac");
+        btnAlmanac.setFont(new Font("SansSerif", Font.BOLD, 11));
+        btnAlmanac.setBackground(new Color(35, 110, 60));
+        btnAlmanac.setForeground(Color.WHITE);
+        btnAlmanac.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                SoundEffects.playUiClick();
+                showCropAlmanacDialog();
+            }
+        });
+        systemsDock.add(btnAlmanac);
+
+        btnBioBanks = new JButton("🧬 Bio-Banks");
+        btnBioBanks.setFont(new Font("SansSerif", Font.BOLD, 11));
+        btnBioBanks.setBackground(new Color(110, 40, 140));
+        btnBioBanks.setForeground(Color.WHITE);
+        btnBioBanks.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                SoundEffects.playUiClick();
+                showBioBankGenomeDialog();
+            }
+        });
+        systemsDock.add(btnBioBanks);
+
+        btnCargoHold = new JButton("📦 Cargo Hold");
+        btnCargoHold.setFont(new Font("SansSerif", Font.BOLD, 11));
+        btnCargoHold.setBackground(new Color(25, 90, 110));
+        btnCargoHold.setForeground(Color.WHITE);
+        btnCargoHold.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                SoundEffects.playUiClick();
+                showCargoHoldDialog();
+            }
+        });
+        systemsDock.add(btnCargoHold);
+
+        btnMissionBriefing = new JButton("📜 Directives");
         btnMissionBriefing.setFont(new Font("SansSerif", Font.BOLD, 11));
         btnMissionBriefing.setBackground(new Color(180, 110, 20));
         btnMissionBriefing.setForeground(Color.WHITE);
@@ -682,7 +687,7 @@ public class HarvestGUI extends JFrame {
                 showMissionBriefingDialog();
             }
         });
-        secondaryDock.add(btnMissionBriefing);
+        systemsDock.add(btnMissionBriefing);
 
         btnCodex = new JButton("📖 Codex");
         btnCodex.setFont(new Font("SansSerif", Font.PLAIN, 11));
@@ -692,10 +697,13 @@ public class HarvestGUI extends JFrame {
                 showHistoricalCodexDialog();
             }
         });
-        secondaryDock.add(btnCodex);
+        systemsDock.add(btnCodex);
 
-        btnScanner = new JButton("📻 Sub-Space Scanner");
-        btnScanner.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        btnScanner = new JButton("📻 Frequency Tuner");
+        btnScanner.setFont(new Font("SansSerif", Font.BOLD, 11));
+        btnScanner.setBackground(new Color(0, 160, 215));
+        btnScanner.setForeground(Color.WHITE);
+        btnScanner.setToolTipText("Tune Sub-Space Radio (100.0 - 999.0 MHz) to scan for secret transmissions and easter eggs");
         btnScanner.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -703,7 +711,7 @@ public class HarvestGUI extends JFrame {
                 showSubSpaceScannerDialog();
             }
         });
-        secondaryDock.add(btnScanner);
+        systemsDock.add(btnScanner);
 
         btnAudioToggle = new JButton("Audio: " + (SoundEffects.isSoundEnabled() ? "ON" : "OFF"));
         btnAudioToggle.setFont(new Font("SansSerif", Font.PLAIN, 11));
@@ -715,9 +723,12 @@ public class HarvestGUI extends JFrame {
                 log("Audio Synthesis: " + (SoundEffects.isSoundEnabled() ? "ENABLED" : "MUTED"));
             }
         });
-        secondaryDock.add(btnAudioToggle);
+        systemsDock.add(btnAudioToggle);
 
-        bottomPanel.add(secondaryDock);
+        bottomPanel.add(swarmDock);
+        bottomPanel.add(Box.createVerticalStrut(2));
+        bottomPanel.add(systemsDock);
+        bottomPanel.add(Box.createVerticalStrut(4));
         bottomPanel.add(Box.createVerticalStrut(4));
 
         txtLog = new JTextArea(3, 50);
@@ -863,8 +874,23 @@ public class HarvestGUI extends JFrame {
             }
         });
 
+        btnQuickFreq = new JButton("📻 Frequency Tuner");
+        btnQuickFreq.setFont(new Font("SansSerif", Font.BOLD, 11));
+        btnQuickFreq.setBackground(new Color(0, 140, 190));
+        btnQuickFreq.setForeground(Color.WHITE);
+        btnQuickFreq.setFocusPainted(false);
+        btnQuickFreq.setToolTipText("Tune sub-space frequencies (100.0 - 999.0 MHz) to intercept hidden transmissions");
+        btnQuickFreq.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                SoundEffects.playUiClick();
+                showSubSpaceScannerDialog();
+            }
+        });
+
         hubButtons.add(btnManageCitadel);
         hubButtons.add(btnCitadelLockdown);
+        hubButtons.add(btnQuickFreq);
         hubButtons.add(btnToggleMapView);
         hubPanel.add(hubButtons, BorderLayout.EAST);
 
@@ -1964,61 +1990,9 @@ public class HarvestGUI extends JFrame {
 
     private void showSubSpaceScannerDialog() {
         SubSpaceScanner scanner = engine.getScanner();
-        if (scanner.hasPendingUndecodedSignal()) {
-            SubSpaceScanner.SignalTransmission pending = scanner.getActivePendingSignal();
-            FrequencyDecoderDialog dlg = new FrequencyDecoderDialog(this, pending, scanner, state);
-            dlg.setVisible(true);
-            updateDisplay();
-            return;
-        }
-
-        List<SubSpaceScanner.SignalTransmission> decoded = scanner.getDecodedArchive();
-        List<SubSpaceScanner.SignalTransmission> discovered = scanner.getAllDiscoveredSignals();
-
-        StringBuilder sb = new StringBuilder("=== SUB-SPACE TELEMETRY & TRANSMISSION SCANNER ===\n\n");
-        sb.append(String.format("Scanner Status: ACTIVE  |  Discovered Signals: %d/7  |  Decrypted Archives: %d/7\n\n",
-                discovered.size(), decoded.size()));
-
-        if (decoded.isEmpty()) {
-            sb.append("No decrypted transmissions in archives yet.\n\n");
-            sb.append("LORE SIGNAL RADAR HINTS:\n");
-            sb.append("  • Shepard Anomaly: Inspect or interact with Sol [0, 0].\n");
-            sb.append("  • Mordin Solus: Deploy STG research on Sur'Kesh [0, 3].\n");
-            sb.append("  • Garrus Calibrations: Palaven [0, 2] during Solar Flare Surge.\n");
-            sb.append("  • Blasto Spectre: Upgrade Citadel Nexus or Kahje [1, 3] in Dark Storm.\n");
-            sb.append("  • Space Hamster: Stockpile biomass reserves.\n");
-            sb.append("  • Marauder Shields: Advance into the Crucible War (Act 4).\n");
-            sb.append("  • Conrad Verner: Long-term epoch progression & civilian flights.\n\n");
-            sb.append("When an anomalous carrier wave is detected, tune the frequency dial (100.0 - 999.0 MHz) to decode it!");
-            JOptionPane.showMessageDialog(this, sb.toString(), "Sub-Space Telemetry Scanner", JOptionPane.INFORMATION_MESSAGE);
-        } else {
-            sb.append("DECRYPTED SIGNAL ARCHIVES:\n");
-            for (int i = 0; i < decoded.size(); i++) {
-                SubSpaceScanner.SignalTransmission sig = decoded.get(i);
-                sb.append(String.format("[%d] %s (%.1f MHz)\n    Source: %s\n\n",
-                        i + 1, sig.getTitle(), sig.getTargetFrequencyMHz(), sig.getSource()));
-            }
-            sb.append("Enter signal number to re-read archived transcript (or Cancel):");
-
-            String input = JOptionPane.showInputDialog(this, sb.toString(),
-                    "Decrypted Sub-Space Archives", JOptionPane.QUESTION_MESSAGE);
-            if (input != null && !input.trim().isEmpty()) {
-                try {
-                    int idx = Integer.parseInt(input.trim()) - 1;
-                    if (idx >= 0 && idx < decoded.size()) {
-                        SubSpaceScanner.SignalTransmission selected = decoded.get(idx);
-                        JTextArea area = new JTextArea(selected.getRawContent(), 16, 52);
-                        area.setEditable(false);
-                        area.setFont(new Font("Monospaced", Font.PLAIN, 12));
-                        area.setBackground(new Color(15, 20, 30));
-                        area.setForeground(new Color(220, 240, 255));
-                        JOptionPane.showMessageDialog(this, new JScrollPane(area),
-                                selected.getTitle() + " [" + selected.getTargetFrequencyMHz() + " MHz]",
-                                JOptionPane.PLAIN_MESSAGE);
-                    }
-                } catch (Exception ignored) {}
-            }
-        }
+        FrequencyDecoderDialog dlg = new FrequencyDecoderDialog(this, scanner, state);
+        dlg.setVisible(true);
+        updateDisplay();
     }
 
     private void log(String msg) {
@@ -2418,16 +2392,20 @@ public class HarvestGUI extends JFrame {
         }
 
         // Update Sub-Space Scanner Button Alert State
+        boolean hasSignal = engine.getScanner() != null && engine.getScanner().hasPendingUndecodedSignal();
+        String scannerText = hasSignal ? "⚡ 📻 SIGNAL INTERCEPTED!" : "📻 Frequency Tuner";
+        Color scannerBg = hasSignal ? new Color(255, 140, 0) : new Color(0, 160, 215);
+        Color scannerFg = hasSignal ? Color.BLACK : Color.WHITE;
+
         if (btnScanner != null) {
-            if (engine.getScanner().hasPendingUndecodedSignal()) {
-                btnScanner.setText("⚡ 📻 SIGNAL INTERCEPTED!");
-                btnScanner.setBackground(new Color(255, 140, 0));
-                btnScanner.setForeground(Color.BLACK);
-            } else {
-                btnScanner.setText("📻 Sub-Space Scanner");
-                btnScanner.setBackground(new Color(40, 50, 65));
-                btnScanner.setForeground(Color.WHITE);
-            }
+            btnScanner.setText(scannerText);
+            btnScanner.setBackground(scannerBg);
+            btnScanner.setForeground(scannerFg);
+        }
+        if (btnQuickFreq != null) {
+            btnQuickFreq.setText(scannerText);
+            btnQuickFreq.setBackground(scannerBg);
+            btnQuickFreq.setForeground(scannerFg);
         }
 
         // Update Time Mode Button

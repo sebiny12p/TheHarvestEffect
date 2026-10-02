@@ -256,4 +256,76 @@ public class SubSpaceScanner implements Serializable {
     public SignalTransmission getSignal(String id) {
         return signals.get(id);
     }
+
+    public SignalTransmission findNearestSignal(double frequencyMHz) {
+        SignalTransmission nearest = null;
+        double minDelta = Double.MAX_VALUE;
+        for (SignalTransmission s : signals.values()) {
+            double delta = Math.abs(frequencyMHz - s.getTargetFrequencyMHz());
+            if (delta < minDelta) {
+                minDelta = delta;
+                nearest = s;
+            }
+        }
+        return nearest;
+    }
+
+    public SignalTransmission findNearestUndecodedSignal(double frequencyMHz) {
+        SignalTransmission nearest = null;
+        double minDelta = Double.MAX_VALUE;
+        for (SignalTransmission s : signals.values()) {
+            if (s.isDecoded()) continue;
+            double delta = Math.abs(frequencyMHz - s.getTargetFrequencyMHz());
+            if (delta < minDelta) {
+                minDelta = delta;
+                nearest = s;
+            }
+        }
+        return nearest;
+    }
+
+    public DecodeResult attemptDecodeAny(double frequencyMHz, GalacticState state) {
+        // 1. Check if any undecoded signal is in lock range (<= 1.5 MHz)
+        for (SignalTransmission s : signals.values()) {
+            if (!s.isDecoded() && Math.abs(frequencyMHz - s.getTargetFrequencyMHz()) <= 1.5) {
+                s.setDiscovered(true);
+                return attemptDecode(s.getId(), frequencyMHz, state);
+            }
+        }
+        // 2. Check if any already decoded signal is in lock range
+        for (SignalTransmission s : signals.values()) {
+            if (Math.abs(frequencyMHz - s.getTargetFrequencyMHz()) <= 1.5) {
+                return attemptDecode(s.getId(), frequencyMHz, state);
+            }
+        }
+        // 3. Proximity feedback to nearest undecoded signal (or nearest signal)
+        SignalTransmission nearest = findNearestUndecodedSignal(frequencyMHz);
+        if (nearest == null) nearest = findNearestSignal(frequencyMHz);
+        if (nearest == null) {
+            return new DecodeResult(false, 0.05, "No sub-space signals detected.", null);
+        }
+        double delta = Math.abs(frequencyMHz - nearest.getTargetFrequencyMHz());
+        double strength = Math.max(0.05, 1.0 - (delta / 80.0));
+        SoundEffects.playRadioStatic(250);
+        String dirHint = frequencyMHz < nearest.getTargetFrequencyMHz()
+                ? "Tuning is TOO LOW. Increase frequency toward higher bands."
+                : "Tuning is TOO HIGH. Decrease frequency toward lower bands.";
+        String strengthStr;
+        if (delta < 10.0) {
+            strengthStr = "CRITICAL RESONANCE (Very close - fine tune dial!)";
+        } else if (delta < 30.0) {
+            strengthStr = "STRONG HARMONIC (Approaching carrier wave)";
+        } else if (delta < 80.0) {
+            strengthStr = "WEAK SUB-SPACE LEAKAGE (Detecting faint fluctuations)";
+        } else {
+            strengthStr = "PURE STATIC (No signal detected on this band)";
+        }
+        return new DecodeResult(false, strength,
+                String.format("[%s] Delta: %.1f MHz off target. %s", strengthStr, delta, dirHint),
+                nearest);
+    }
+
+    public Collection<SignalTransmission> getAllSignals() {
+        return Collections.unmodifiableCollection(signals.values());
+    }
 }

@@ -15,10 +15,13 @@ import javax.swing.event.ChangeListener;
  * Replaces the static easter egg cheat menu with an authentic sci-fi frequency dial.
  */
 public class FrequencyDecoderDialog extends JDialog {
-    private final SubSpaceScanner.SignalTransmission transmission;
+    private SubSpaceScanner.SignalTransmission transmission;
     private final SubSpaceScanner scanner;
     private final GalacticState state;
 
+    private JLabel lblHeaderTitle;
+    private JLabel lblSource;
+    private JLabel lblClue;
     private JLabel lblFreqDisplay;
     private JTextField txtDirectFreq;
     private JSlider sldFreq;
@@ -27,15 +30,19 @@ public class FrequencyDecoderDialog extends JDialog {
     private JTextArea txtDecryptedContent;
     private JButton btnLock;
 
+    public FrequencyDecoderDialog(JFrame parent, SubSpaceScanner scanner, GalacticState state) {
+        this(parent, scanner != null ? scanner.getActivePendingSignal() : null, scanner, state);
+    }
+
     public FrequencyDecoderDialog(JFrame parent, SubSpaceScanner.SignalTransmission transmission,
                                   SubSpaceScanner scanner, GalacticState state) {
-        super(parent, "Sub-Space Signal Frequency Decoder", true);
+        super(parent, "Sub-Space Signal Frequency Decoder & Scanner", true);
         this.transmission = transmission;
         this.scanner = scanner;
         this.state = state;
 
         buildUI();
-        setSize(840, 680);
+        setSize(860, 700);
         setLocationRelativeTo(parent);
     }
 
@@ -52,19 +59,31 @@ public class FrequencyDecoderDialog extends JDialog {
                 BorderFactory.createEmptyBorder(8, 12, 8, 12)
         ));
 
-        JLabel lblTitle = new JLabel("⚡ [ENCRYPTED SUB-SPACE TRANSMISSION DETECTED]", SwingConstants.CENTER);
-        lblTitle.setFont(new Font("Monospaced", Font.BOLD, 14));
-        lblTitle.setForeground(new Color(255, 180, 40));
+        lblHeaderTitle = new JLabel(
+                (transmission != null)
+                        ? "⚡ [ENCRYPTED SUB-SPACE TRANSMISSION INTERCEPTED]"
+                        : "⚡ [SUB-SPACE FREQUENCY RECEIVER & SCANNER ACTIVE]",
+                SwingConstants.CENTER);
+        lblHeaderTitle.setFont(new Font("Monospaced", Font.BOLD, 14));
+        lblHeaderTitle.setForeground(new Color(255, 180, 40));
 
-        JLabel lblSource = new JLabel("SOURCE: " + transmission.getSource(), SwingConstants.CENTER);
+        lblSource = new JLabel(
+                (transmission != null)
+                        ? "SOURCE: " + transmission.getSource()
+                        : "SOURCE: WIDE-SPECTRUM REAPER INTERCEPT ARRAY (100.0 — 999.0 MHz)",
+                SwingConstants.CENTER);
         lblSource.setFont(new Font("SansSerif", Font.BOLD, 12));
         lblSource.setForeground(new Color(180, 220, 255));
 
-        JLabel lblClue = new JLabel("CLUE: " + transmission.getFrequencyClue(), SwingConstants.CENTER);
+        lblClue = new JLabel(
+                (transmission != null)
+                        ? "CLUE: " + transmission.getFrequencyClue()
+                        : "CLUE: Enter target frequency or tune the dial to locate carrier waves across the galaxy.",
+                SwingConstants.CENTER);
         lblClue.setFont(new Font("Monospaced", Font.ITALIC, 11));
         lblClue.setForeground(new Color(140, 240, 200));
 
-        headerPanel.add(lblTitle);
+        headerPanel.add(lblHeaderTitle);
         headerPanel.add(lblSource);
         headerPanel.add(lblClue);
         content.add(headerPanel, BorderLayout.NORTH);
@@ -222,6 +241,18 @@ public class FrequencyDecoderDialog extends JDialog {
             }
         });
 
+        JButton btnArchives = new JButton("📖 Frequency Log & Clues");
+        btnArchives.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        btnArchives.setBackground(new Color(40, 65, 95));
+        btnArchives.setForeground(Color.WHITE);
+        btnArchives.setFocusPainted(false);
+        btnArchives.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                showFrequencyLogAndCluesDialog();
+            }
+        });
+
         JButton btnClose = new JButton("Close Scanner");
         btnClose.setFont(new Font("SansSerif", Font.PLAIN, 12));
         btnClose.addActionListener(new ActionListener() {
@@ -231,6 +262,7 @@ public class FrequencyDecoderDialog extends JDialog {
             }
         });
 
+        footer.add(btnArchives);
         footer.add(btnLock);
         footer.add(btnClose);
         content.add(footer, BorderLayout.SOUTH);
@@ -280,51 +312,98 @@ public class FrequencyDecoderDialog extends JDialog {
     }
 
     private void updateSignalStrengthPreview(double freq) {
-        double delta = Math.abs(freq - transmission.getTargetFrequencyMHz());
+        SubSpaceScanner.SignalTransmission target = transmission;
+        if (target == null || target.isDecoded()) {
+            target = scanner.findNearestUndecodedSignal(freq);
+            if (target == null) target = scanner.findNearestSignal(freq);
+        }
+
+        double delta = (target != null) ? Math.abs(freq - target.getTargetFrequencyMHz()) : 999.0;
         int strength = (int) Math.max(5, Math.min(100, (1.0 - (delta / 80.0)) * 100));
         barSignalStrength.setValue(strength);
 
         if (delta <= 1.5) {
-            barSignalStrength.setString(String.format("SIGNAL STRENGTH: 100%% [PHASE LOCK READY: %.1f MHz]", freq));
+            barSignalStrength.setString(String.format(java.util.Locale.US, "SIGNAL STRENGTH: 100%% [PHASE LOCK READY: %.1f MHz]", freq));
             barSignalStrength.setForeground(new Color(0, 240, 100));
             lblFeedback.setText("✦ CARRIER DETECTED! Press 'ATTEMPT DECRYPTION' to lock and decrypt!");
             lblFeedback.setForeground(new Color(0, 255, 120));
         } else if (delta < 15.0) {
-            barSignalStrength.setString(String.format("SIGNAL STRENGTH: %d%% [CRITICAL HARMONIC RESONANCE]", strength));
+            barSignalStrength.setString(String.format(java.util.Locale.US, "SIGNAL STRENGTH: %d%% [CRITICAL HARMONIC RESONANCE]", strength));
             barSignalStrength.setForeground(new Color(255, 200, 50));
             lblFeedback.setText("Very close! Fine-tune by ±0.1 or ±1.0 MHz.");
             lblFeedback.setForeground(new Color(255, 220, 80));
         } else if (delta < 50.0) {
-            barSignalStrength.setString(String.format("SIGNAL STRENGTH: %d%% [WEAK SUB-SPACE LEAKAGE]", strength));
+            barSignalStrength.setString(String.format(java.util.Locale.US, "SIGNAL STRENGTH: %d%% [WEAK SUB-SPACE LEAKAGE]", strength));
             barSignalStrength.setForeground(new Color(255, 130, 40));
-            String hint = freq < transmission.getTargetFrequencyMHz() ? "Tune higher." : "Tune lower.";
+            String hint = (target != null && freq < target.getTargetFrequencyMHz()) ? "Tune higher." : "Tune lower.";
             lblFeedback.setText("Sub-space carrier detected nearby. " + hint);
             lblFeedback.setForeground(new Color(255, 160, 80));
         } else {
-            barSignalStrength.setString(String.format("SIGNAL STRENGTH: %d%% [STATIC NOISE]", strength));
+            barSignalStrength.setString(String.format(java.util.Locale.US, "SIGNAL STRENGTH: %d%% [STATIC NOISE]", strength));
             barSignalStrength.setForeground(new Color(180, 50, 50));
-            lblFeedback.setText("Pure static on this frequency band. Consult the signal clue above.");
+            lblFeedback.setText("Pure static on this frequency band. Enter a known frequency (e.g. 119.4, 714.0) or tune dial.");
             lblFeedback.setForeground(new Color(180, 120, 130));
         }
     }
 
     private void executeDecodeAttempt() {
         double currentFreq = sldFreq.getValue() / 10.0;
-        SubSpaceScanner.DecodeResult res = scanner.attemptDecode(transmission.getId(), currentFreq, state);
+        SubSpaceScanner.DecodeResult res;
+        if (transmission != null && !transmission.isDecoded()) {
+            res = scanner.attemptDecode(transmission.getId(), currentFreq, state);
+        } else {
+            res = scanner.attemptDecodeAny(currentFreq, state);
+        }
 
         lblFeedback.setText(res.getFeedback());
         if (res.isLocked()) {
+            this.transmission = res.getTransmission();
+            lblHeaderTitle.setText("⚡ [CARRIER FREQUENCY LOCKED & DECRYPTED]");
+            lblSource.setText("SOURCE: " + transmission.getSource());
+            lblClue.setText("CLUE: " + transmission.getFrequencyClue());
             txtDecryptedContent.setText(transmission.getRawContent());
             txtDecryptedContent.setForeground(new Color(0, 255, 150));
+            txtDecryptedContent.setCaretPosition(0);
             btnLock.setEnabled(false);
             btnLock.setText("✓ DECRYPTED & LOGGED IN ARCHIVE");
             btnLock.setBackground(new Color(30, 100, 50));
             JOptionPane.showMessageDialog(this,
-                    "CARRIER FREQUENCY LOCKED (" + String.format("%.1f", transmission.getTargetFrequencyMHz()) + " MHz)!\n\n"
-                    + "Transmission decrypted successfully!\n"
+                    "CARRIER FREQUENCY LOCKED (" + String.format(java.util.Locale.US, "%.1f", transmission.getTargetFrequencyMHz()) + " MHz)!\n\n"
+                    + "Transmission decrypted: " + transmission.getTitle() + "\n\n"
                     + String.format("Rewards: +%d Eezo, +%d Biomass deposited into fleet reserves.",
                             transmission.getEezoReward(), transmission.getBiomassReward()),
                     "Decryption Successful", JOptionPane.INFORMATION_MESSAGE);
         }
+    }
+
+    private void showFrequencyLogAndCluesDialog() {
+        StringBuilder sb = new StringBuilder("=== SUB-SPACE FREQUENCY TELEMETRY ARCHIVE ===\n\n");
+        sb.append("Tuning Band: 100.0 MHz to 999.0 MHz\n\n");
+        for (SubSpaceScanner.SignalTransmission sig : scanner.getAllSignals()) {
+            if (sig.isDecoded()) {
+                sb.append(String.format("✓ [DECRYPTED - %.1f MHz] %s\n", sig.getTargetFrequencyMHz(), sig.getTitle()));
+                sb.append(String.format("   Source: %s\n\n", sig.getSource()));
+            } else if (sig.isDiscovered()) {
+                sb.append(String.format("⚡ [INTERCEPTED - PENDING] %s\n", sig.getTitle()));
+                sb.append(String.format("   Source: %s\n", sig.getSource()));
+                sb.append(String.format("   Clue: %s\n\n", sig.getFrequencyClue()));
+            } else {
+                sb.append(String.format("? [ENCRYPTED SIGNAL] %s\n", sig.getTitle()));
+                sb.append(String.format("   Clue: %s\n\n", sig.getFrequencyClue()));
+            }
+        }
+        sb.append("----------------------------------------------------------------------\n");
+        sb.append("HINT: Enter any target frequency in 'Direct Frequency Entry' and\n");
+        sb.append("click '📻 Tune Receiver' (or press Enter) to jump straight to that frequency!");
+
+        JTextArea area = new JTextArea(sb.toString(), 22, 60);
+        area.setEditable(false);
+        area.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        area.setBackground(new Color(12, 16, 25));
+        area.setForeground(new Color(210, 235, 255));
+        area.setCaretPosition(0);
+
+        JOptionPane.showMessageDialog(this, new JScrollPane(area),
+                "Sub-Space Frequency Archives & Lore Clues", JOptionPane.PLAIN_MESSAGE);
     }
 }

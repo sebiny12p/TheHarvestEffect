@@ -65,6 +65,7 @@ public class HarvestEffectTestSuite {
         testDroneRelocationAndDismantling();
         testCargoSpecimenResearchRequirementsAndSalvageLiquidation();
         testMissionCompletionSandboxSuppressionAndVictoryNarrative();
+        testBroadSpectrumFrequencyScanningAndTuning();
 
         System.out.println("==============================================================");
         System.out.printf("Test Results: %d/%d tests passed successfully!%n", passedTests, totalTests);
@@ -2068,5 +2069,55 @@ public class HarvestEffectTestSuite {
                 !CampaignManager.Act.ACT_5_ENDGAME.getObjectiveDescription().contains("Tier V"));
         assertTrue("Act 5 Act objective description mentions 24-planet nursery convergence",
                 CampaignManager.Act.ACT_5_ENDGAME.getObjectiveDescription().contains("24-planet nursery convergence"));
+    }
+
+    private static void testBroadSpectrumFrequencyScanningAndTuning() {
+        System.out.println("\n[Test 46: Broad-Spectrum Frequency Scanning & Free-Scan Tuning]");
+        SubSpaceScanner scanner = new SubSpaceScanner();
+        GalacticState state = new GalacticState("Harbinger", "Cycle 1");
+        int initEezo = state.getEezoReserves();
+        int initBiomass = state.getAccumulatedBiomass();
+
+        // 1. Verify all 7 easter egg signals are registered
+        assertTrue("SubSpaceScanner registers all 7 easter egg signals", scanner.getAllSignals().size() == 7);
+
+        // 2. Nearest signal lookup
+        SubSpaceScanner.SignalTransmission nearest = scanner.findNearestUndecodedSignal(115.0);
+        assertTrue("Nearest signal to 115.0 MHz is Shepard (119.4 MHz)",
+                nearest != null && nearest.getId().equals("shepard"));
+
+        // 3. Proximity static feedback when tuning too low (e.g. 100.0 MHz)
+        SubSpaceScanner.DecodeResult lowResult = scanner.attemptDecodeAny(100.0, state);
+        assertTrue("Tuning to 100.0 MHz does not decode", !lowResult.isLocked());
+        assertTrue("Feedback indicates tuning is too low", lowResult.getFeedback().contains("Tuning is TOO LOW"));
+
+        // 4. Critical resonance proximity when within 10 MHz (e.g. 115.0 MHz)
+        SubSpaceScanner.DecodeResult nearResult = scanner.attemptDecodeAny(115.0, state);
+        assertTrue("Tuning within 5 MHz of 119.4 gives critical resonance",
+                nearResult.getFeedback().contains("CRITICAL RESONANCE"));
+
+        // 5. Successful carrier wave phase lock within 1.5 MHz (e.g. 119.0 MHz)
+        SubSpaceScanner.DecodeResult decodeResult = scanner.attemptDecodeAny(119.0, state);
+        assertTrue("Tuning within 1.5 MHz achieves carrier lock", decodeResult.isLocked());
+        assertTrue("Carrier lock message contains 'CARRIER LOCKED'", decodeResult.getFeedback().contains("CARRIER LOCKED"));
+        assertTrue("Shepard signal is now marked decoded", scanner.getSignal("shepard").isDecoded());
+        assertTrue("Decoded archive contains shepard signal", scanner.getDecodedArchive().size() == 1);
+        assertTrue("Eezo rewarded to state (+200)", state.getEezoReserves() == initEezo + 200);
+        assertTrue("Biomass rewarded to state (+100)", state.getAccumulatedBiomass() == initBiomass + 100);
+
+        // 6. Tuning same frequency again reports already decrypted in archives
+        SubSpaceScanner.DecodeResult reattempt = scanner.attemptDecodeAny(119.4, state);
+        assertTrue("Re-attempting decoded signal reports already decrypted",
+                reattempt.getFeedback().contains("already decrypted"));
+
+        // 7. Undecoded nearest now picks Conrad Verner (104.2 MHz)
+        SubSpaceScanner.SignalTransmission nextNearest = scanner.findNearestUndecodedSignal(115.0);
+        assertTrue("Nearest undecoded signal after Shepard decoded is Conrad (104.2 MHz)",
+                nextNearest != null && nextNearest.getId().equals("conrad"));
+
+        // 8. Test direct frequency lock on Marauder Shields (714.0 MHz)
+        SubSpaceScanner.DecodeResult marauderResult = scanner.attemptDecodeAny(714.0, state);
+        assertTrue("Direct lock on 714.0 MHz decodes Marauder Shields", marauderResult.isLocked());
+        assertTrue("Marauder Shields is marked decoded", scanner.getSignal("marauder").isDecoded());
     }
 }
