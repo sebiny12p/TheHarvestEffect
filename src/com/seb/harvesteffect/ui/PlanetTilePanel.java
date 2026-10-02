@@ -80,7 +80,7 @@ public class PlanetTilePanel extends JPanel {
             sb.append("Population: ").append(civ.getPopulationBillions()).append("B organics<br>");
             sb.append("Climate Affinity: <span style='color:#81d4fa;'>").append(system.getClimateType().getAffinityLabel(civ.getSpeciesName())).append("</span><br>");
             sb.append("Status: ").append(civ.isHarvestReady() ? "<b style='color:#ffd700;'>🌾 RIPE FOR HARVEST!</b>" : "<span style='color:#aaa;'>Incubating (Stage " + (civ.getEvolutionaryTier() + 1) + "/3)</span>").append("<br>");
-            if (civ.hasKineticBarrier()) sb.append("<span style='color:#4fc3f7;'>🛡️ Kinetic Barrier Active</span><br>");
+            if (civ.hasKineticBarrier()) sb.append("<span style='color:#4fc3f7;'>🛡️ Kinetic Barrier Active (Requires Scion/Husk or Sovereign)</span><br>");
         } else {
             sb.append("Status: <span style='color:#81c784;'>Lifeless World (Ready for Seeding)</span><br>");
             sb.append("Favorable Species: ").append(system.getClimateType().getFavorableSpeciesNames()).append("<br>");

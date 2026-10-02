@@ -913,6 +913,32 @@ public class HarvestEffectTestSuite {
         } catch (Exception e) {
             assertTrue("Scion breach harvest failed: " + e.getMessage(), false);
         }
+
+        // 4. Test that tech upgrade and cargo component do NOT auto-bypass barrier
+        StarSystem kroganSys = state.getGalaxyMap().getSystem(0, 3);
+        com.seb.harvesteffect.model.civilization.Krogan krogan = new com.seb.harvesteffect.model.civilization.Krogan();
+        try {
+            kroganSys.deployCivilization(krogan);
+            krogan.setEvolutionaryTier(Civilization.TIER_APEX_ZENITH);
+            krogan.setKineticBarrier(true);
+            engine.getTechTree().getUpgrade("cyclonic_barrier").setUnlocked(true);
+            state.getCargoHold().store(new com.seb.harvesteffect.model.item.FleetComponent("thanix-cannon", 10, 200));
+
+            boolean kroganDeflected = false;
+            try {
+                engine.harvestSystem(0, 3);
+            } catch (CivilizationBarrierException cbe) {
+                kroganDeflected = true;
+            }
+            assertTrue("Martial kinetic barrier requires unit or Flagship, not bypassed by tech/cargo", kroganDeflected);
+
+            // 5. Jump Sovereign Flagship directly into orbit to breach barrier
+            state.moveFlagship(0, 3);
+            HarvestYield kroganYield = engine.harvestSystem(0, 3);
+            assertTrue("Sovereign Flagship in orbit successfully breaches planetary kinetic barrier", kroganYield != null);
+        } catch (Exception e) {
+            assertTrue("Krogan barrier verification failed: " + e.getMessage(), false);
+        }
     }
 
     private static void testSovereignFlagshipRelocationAndAura() {

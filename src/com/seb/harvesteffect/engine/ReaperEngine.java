@@ -419,16 +419,6 @@ public class ReaperEngine implements Serializable {
                 barrierBreached = true;
                 civ.disableKineticBarrier();
             }
-            // Tech upgrade: Cyclonic Kinetic Barrier penetrates defenses
-            if (techTree.isUnlocked("cyclonic_barrier") || techTree.isUnlocked("cyclonic_barriers")) {
-                barrierBreached = true;
-                civ.disableKineticBarrier();
-            }
-            // Fleet Components in cargo: Cyclonic Kinetic Barrier or Thanix Cannon breaches defenses
-            if (state.hasFleetComponent("barrier") || state.hasFleetComponent("thanix")) {
-                barrierBreached = true;
-                civ.disableKineticBarrier();
-            }
             if (!barrierBreached) {
                 throw new CivilizationBarrierException(civ.getSpeciesName());
             }

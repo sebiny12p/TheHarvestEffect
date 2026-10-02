@@ -1471,8 +1471,7 @@ public class HarvestGUI extends JFrame {
                     + e.getMessage() + "\n\n"
                     + "Tactical Breach Solutions:\n"
                     + "  • Station a Scion Behemoth or Husk Swarm garrison on this planet.\n"
-                    + "  • Research 'Cyclonic Kinetic Shield Matrix' in the Tech Tree.\n"
-                    + "  • Jump the Sovereign Flagship directly to this system.",
+                    + "  • Jump the Sovereign Flagship directly into orbit of this star system.",
                     "Orbital Defense Deflection", JOptionPane.WARNING_MESSAGE);
         } catch (CargoHoldFullException e) {
             JOptionPane.showMessageDialog(this, e.getMessage(), "Cargo Hold Full", JOptionPane.WARNING_MESSAGE);
@@ -2168,7 +2167,7 @@ public class HarvestGUI extends JFrame {
                             unit instanceof CollectorDrone ? "+Growth Boost" : (unit instanceof ScionBehemoth ? "+50% Harvest Yield" : "Security"))
                     : unattendedTag;
 
-            String barrierTag = (civ != null && civ.hasKineticBarrier()) ? "  |  🛡️ BARRIER ACTIVE" : "";
+            String barrierTag = (civ != null && civ.hasKineticBarrier()) ? "  |  🛡️ BARRIER ACTIVE (Requires Scion/Husk or Sovereign!)" : "";
             String heresyTag = (civ != null && civ.isAiHeresyActive()) ? "  |  ⚠️ AI HERESY (-50% Yield)" : "";
 
             if (civ != null) {
@@ -2592,7 +2591,7 @@ public class HarvestGUI extends JFrame {
         }
 
         if (barrierDeflectedCount > 0) {
-            sb.append(String.format("\n[DEFENSE NOTICE] %d world(s) deflected ascension via planetary kinetic barriers.\nStation Scions/Husks, jump Sovereign, or research Cyclonic Shields to breach.\n", barrierDeflectedCount));
+            sb.append(String.format("\n[DEFENSE NOTICE] %d world(s) deflected ascension via planetary kinetic barriers.\nStation Scions/Husks or jump Sovereign to breach.\n", barrierDeflectedCount));
         }
         if (cargoFullCount > 0) {
             sb.append(String.format("\n[CARGO NOTICE] %d world(s) could not be harvested because all %d flagship cargo pods are full.\nResearch Genetic Synthesis Vats in Tech Tree or purge pods to free space.\n",

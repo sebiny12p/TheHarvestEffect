@@ -224,7 +224,7 @@ public class TechTree implements Serializable {
         map.put("cyclonic_barrier", new Upgrade(
                 "cyclonic_barrier",
                 "Cyclonic Kinetic Shield Matrix",
-                "Shields all swarm constructs against cosmic storms and deflects planetary kinetic barriers.",
+                "Advanced Reaper defensive shielding: protects fleet assets from cosmic turbulence and unlocks Citadel Eezo Siphons.",
                 Branch.CITADEL_CONVERGENCE,
                 120, 100, 0, "Prologue: The Fall of Earth", null
         ));
