@@ -66,7 +66,6 @@ public class HarvestGUI extends JFrame {
     private JButton btnCargoHold;
     private boolean victoryDialogShown = false;
     private JButton btnTimeMode;
-    private JButton btnMissionBriefing;
     private JButton btnCodex;
     private JButton btnAudioToggle;
     private JButton btnScanner;
@@ -675,19 +674,6 @@ public class HarvestGUI extends JFrame {
             }
         });
         systemsDock.add(btnCargoHold);
-
-        btnMissionBriefing = new JButton("📜 Directives");
-        btnMissionBriefing.setFont(new Font("SansSerif", Font.BOLD, 11));
-        btnMissionBriefing.setBackground(new Color(180, 110, 20));
-        btnMissionBriefing.setForeground(Color.WHITE);
-        btnMissionBriefing.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                SoundEffects.playUiClick();
-                showMissionBriefingDialog();
-            }
-        });
-        systemsDock.add(btnMissionBriefing);
 
         btnCodex = new JButton("📖 Codex");
         btnCodex.setFont(new Font("SansSerif", Font.PLAIN, 11));

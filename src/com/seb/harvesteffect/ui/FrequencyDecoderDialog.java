@@ -18,6 +18,8 @@ public class FrequencyDecoderDialog extends JDialog {
     private SubSpaceScanner.SignalTransmission transmission;
     private final SubSpaceScanner scanner;
     private final GalacticState state;
+    private boolean isUpdatingFromSlider = false;
+    private boolean isUpdatingFromText = false;
 
     private JLabel lblHeaderTitle;
     private JLabel lblSource;
@@ -100,8 +102,16 @@ public class FrequencyDecoderDialog extends JDialog {
                 BorderFactory.createEmptyBorder(10, 14, 10, 14)
         ));
 
+        // Determine initial frequency
+        double initFreq = 450.0;
+        if (transmission != null && !transmission.isDecoded()) {
+            initFreq = transmission.getTargetFrequencyMHz() + 3.0;
+            if (initFreq > 999.0) initFreq = transmission.getTargetFrequencyMHz() - 3.0;
+        }
+        int initSliderVal = (int) Math.round(initFreq * 10.0);
+
         // Big Frequency Readout
-        lblFreqDisplay = new JLabel("450.0 MHz", SwingConstants.CENTER);
+        lblFreqDisplay = new JLabel(String.format(java.util.Locale.US, "%.1f MHz", initFreq), SwingConstants.CENTER);
         lblFreqDisplay.setAlignmentX(Component.CENTER_ALIGNMENT);
         lblFreqDisplay.setFont(new Font("Monospaced", Font.BOLD, 28));
         lblFreqDisplay.setForeground(new Color(0, 240, 255));
@@ -114,7 +124,7 @@ public class FrequencyDecoderDialog extends JDialog {
         lblDirectPrompt.setFont(new Font("Monospaced", Font.BOLD, 12));
         lblDirectPrompt.setForeground(new Color(180, 220, 255));
 
-        txtDirectFreq = new JTextField("450.0", 6);
+        txtDirectFreq = new JTextField(String.format(java.util.Locale.US, "%.1f", initFreq), 6);
         txtDirectFreq.setFont(new Font("Monospaced", Font.BOLD, 15));
         txtDirectFreq.setHorizontalAlignment(JTextField.CENTER);
         txtDirectFreq.setBackground(new Color(25, 35, 50));
@@ -124,6 +134,35 @@ public class FrequencyDecoderDialog extends JDialog {
                 BorderFactory.createLineBorder(new Color(0, 180, 230), 1),
                 BorderFactory.createEmptyBorder(3, 6, 3, 6)
         ));
+
+        // Live typing synchronization
+        txtDirectFreq.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent e) { syncTextToSlider(); }
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent e) { syncTextToSlider(); }
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent e) { syncTextToSlider(); }
+
+            private void syncTextToSlider() {
+                if (isUpdatingFromSlider) return;
+                String text = txtDirectFreq.getText().trim().replace(',', '.');
+                try {
+                    double freq = Double.parseDouble(text);
+                    if (freq >= 100.0 && freq <= 999.0) {
+                        isUpdatingFromText = true;
+                        try {
+                            int sliderVal = (int) Math.round(freq * 10.0);
+                            sldFreq.setValue(sliderVal);
+                            lblFreqDisplay.setText(String.format(java.util.Locale.US, "%.1f MHz", freq));
+                            updateSignalStrengthPreview(freq);
+                        } finally {
+                            isUpdatingFromText = false;
+                        }
+                    }
+                } catch (NumberFormatException ignored) {}
+            }
+        });
 
         JLabel lblMHz = new JLabel("MHz");
         lblMHz.setFont(new Font("Monospaced", Font.BOLD, 12));
@@ -150,7 +189,7 @@ public class FrequencyDecoderDialog extends JDialog {
         directInputPanel.add(btnDirectTune);
 
         // Tuning Slider
-        sldFreq = new JSlider(1000, 9990, 4500); // 100.0 to 999.0 MHz in 0.1 increments
+        sldFreq = new JSlider(1000, 9990, initSliderVal); // 100.0 to 999.0 MHz in 0.1 increments
         sldFreq.setBackground(new Color(14, 18, 28));
         sldFreq.setForeground(new Color(150, 200, 230));
         sldFreq.setMajorTickSpacing(1500);
@@ -161,12 +200,18 @@ public class FrequencyDecoderDialog extends JDialog {
         sldFreq.addChangeListener(new ChangeListener() {
             @Override
             public void stateChanged(ChangeEvent e) {
-                double freq = sldFreq.getValue() / 10.0;
-                lblFreqDisplay.setText(String.format(java.util.Locale.US, "%.1f MHz", freq));
-                if (!txtDirectFreq.hasFocus()) {
-                    txtDirectFreq.setText(String.format(java.util.Locale.US, "%.1f", freq));
+                if (isUpdatingFromText) return;
+                isUpdatingFromSlider = true;
+                try {
+                    double freq = sldFreq.getValue() / 10.0;
+                    lblFreqDisplay.setText(String.format(java.util.Locale.US, "%.1f MHz", freq));
+                    if (!txtDirectFreq.hasFocus()) {
+                        txtDirectFreq.setText(String.format(java.util.Locale.US, "%.1f", freq));
+                    }
+                    updateSignalStrengthPreview(freq);
+                } finally {
+                    isUpdatingFromSlider = false;
                 }
-                updateSignalStrengthPreview(freq);
             }
         });
 
@@ -268,7 +313,7 @@ public class FrequencyDecoderDialog extends JDialog {
         content.add(footer, BorderLayout.SOUTH);
 
         add(content);
-        updateSignalStrengthPreview(450.0);
+        updateSignalStrengthPreview(initFreq);
     }
 
     private void applyDirectFrequencyInput() {
@@ -283,11 +328,16 @@ public class FrequencyDecoderDialog extends JDialog {
                 return;
             }
             int sliderVal = (int) Math.round(freq * 10.0);
-            sldFreq.setValue(sliderVal);
-            double clamped = sliderVal / 10.0;
-            lblFreqDisplay.setText(String.format(java.util.Locale.US, "%.1f MHz", clamped));
-            txtDirectFreq.setText(String.format(java.util.Locale.US, "%.1f", clamped));
-            updateSignalStrengthPreview(clamped);
+            isUpdatingFromText = true;
+            try {
+                sldFreq.setValue(sliderVal);
+                double clamped = sliderVal / 10.0;
+                lblFreqDisplay.setText(String.format(java.util.Locale.US, "%.1f MHz", clamped));
+                txtDirectFreq.setText(String.format(java.util.Locale.US, "%.1f", clamped));
+                updateSignalStrengthPreview(clamped);
+            } finally {
+                isUpdatingFromText = false;
+            }
         } catch (NumberFormatException ex) {
             JOptionPane.showMessageDialog(this,
                     "Invalid frequency format: '" + text + "'.\nPlease enter a valid number (e.g. 119.4).",
@@ -312,48 +362,72 @@ public class FrequencyDecoderDialog extends JDialog {
     }
 
     private void updateSignalStrengthPreview(double freq) {
-        SubSpaceScanner.SignalTransmission target = transmission;
-        if (target == null || target.isDecoded()) {
-            target = scanner.findNearestUndecodedSignal(freq);
-            if (target == null) target = scanner.findNearestSignal(freq);
+        SubSpaceScanner.SignalTransmission nearest = scanner.findNearestSignal(freq);
+        SubSpaceScanner.SignalTransmission nearestUndecoded = scanner.findNearestUndecodedSignal(freq);
+
+        // 1. If within carrier lock range (1.5 MHz) of ANY known transmission
+        if (nearest != null && Math.abs(freq - nearest.getTargetFrequencyMHz()) <= 1.5) {
+            if (nearest.isDecoded()) {
+                barSignalStrength.setValue(100);
+                barSignalStrength.setString(String.format(java.util.Locale.US, "SIGNAL STRENGTH: 100%% [ARCHIVED CARRIER: %.1f MHz]", freq));
+                barSignalStrength.setForeground(new Color(0, 220, 255));
+                lblFeedback.setText("✓ " + nearest.getTitle() + " - Already decrypted in archives.");
+                lblFeedback.setForeground(new Color(0, 240, 255));
+                txtDecryptedContent.setText(nearest.getRawContent());
+                txtDecryptedContent.setForeground(new Color(0, 255, 150));
+                txtDecryptedContent.setCaretPosition(0);
+                btnLock.setEnabled(false);
+                btnLock.setText("✓ ALREADY DECRYPTED");
+                btnLock.setBackground(new Color(30, 80, 50));
+                return;
+            } else {
+                barSignalStrength.setValue(100);
+                barSignalStrength.setString(String.format(java.util.Locale.US, "SIGNAL STRENGTH: 100%% [PHASE LOCK READY: %.1f MHz]", freq));
+                barSignalStrength.setForeground(new Color(0, 255, 100));
+                lblFeedback.setText("✦ CARRIER DETECTED: " + nearest.getTitle() + "! Press 'ATTEMPT DECRYPTION' to lock and decrypt!");
+                lblFeedback.setForeground(new Color(0, 255, 120));
+                btnLock.setEnabled(true);
+                btnLock.setText("📡 ATTEMPT DECRYPTION & PHASE LOCK");
+                btnLock.setBackground(new Color(0, 140, 210));
+                return;
+            }
         }
 
+        btnLock.setEnabled(true);
+        btnLock.setText("📡 ATTEMPT DECRYPTION & PHASE LOCK");
+        btnLock.setBackground(new Color(0, 140, 210));
+
+        // 2. Proximity feedback guided toward nearest undecoded signal (or nearest signal)
+        SubSpaceScanner.SignalTransmission target = (nearestUndecoded != null) ? nearestUndecoded : nearest;
         double delta = (target != null) ? Math.abs(freq - target.getTargetFrequencyMHz()) : 999.0;
         int strength = (int) Math.max(5, Math.min(100, (1.0 - (delta / 80.0)) * 100));
         barSignalStrength.setValue(strength);
 
-        if (delta <= 1.5) {
-            barSignalStrength.setString(String.format(java.util.Locale.US, "SIGNAL STRENGTH: 100%% [PHASE LOCK READY: %.1f MHz]", freq));
-            barSignalStrength.setForeground(new Color(0, 240, 100));
-            lblFeedback.setText("✦ CARRIER DETECTED! Press 'ATTEMPT DECRYPTION' to lock and decrypt!");
-            lblFeedback.setForeground(new Color(0, 255, 120));
-        } else if (delta < 15.0) {
+        if (delta < 15.0) {
             barSignalStrength.setString(String.format(java.util.Locale.US, "SIGNAL STRENGTH: %d%% [CRITICAL HARMONIC RESONANCE]", strength));
             barSignalStrength.setForeground(new Color(255, 200, 50));
-            lblFeedback.setText("Very close! Fine-tune by ±0.1 or ±1.0 MHz.");
+            String hint = (target != null && freq < target.getTargetFrequencyMHz()) ? "Tune higher (+)." : "Tune lower (-).";
+            lblFeedback.setText("Critical resonance! " + hint + " Fine-tune by ±0.1 or ±1.0 MHz.");
             lblFeedback.setForeground(new Color(255, 220, 80));
         } else if (delta < 50.0) {
             barSignalStrength.setString(String.format(java.util.Locale.US, "SIGNAL STRENGTH: %d%% [WEAK SUB-SPACE LEAKAGE]", strength));
             barSignalStrength.setForeground(new Color(255, 130, 40));
-            String hint = (target != null && freq < target.getTargetFrequencyMHz()) ? "Tune higher." : "Tune lower.";
+            String hint = (target != null && freq < target.getTargetFrequencyMHz()) ? "Tune higher (+)." : "Tune lower (-).";
             lblFeedback.setText("Sub-space carrier detected nearby. " + hint);
             lblFeedback.setForeground(new Color(255, 160, 80));
         } else {
             barSignalStrength.setString(String.format(java.util.Locale.US, "SIGNAL STRENGTH: %d%% [STATIC NOISE]", strength));
             barSignalStrength.setForeground(new Color(180, 50, 50));
-            lblFeedback.setText("Pure static on this frequency band. Enter a known frequency (e.g. 119.4, 714.0) or tune dial.");
+            String dir = (target != null && freq < target.getTargetFrequencyMHz()) ? "higher" : "lower";
+            lblFeedback.setText("Static on " + String.format(java.util.Locale.US, "%.1f", freq) + " MHz. Enter known freq (e.g. 119.4, 714.0) or tune " + dir + ".");
             lblFeedback.setForeground(new Color(180, 120, 130));
         }
     }
 
     private void executeDecodeAttempt() {
+        applyDirectFrequencyInput();
         double currentFreq = sldFreq.getValue() / 10.0;
-        SubSpaceScanner.DecodeResult res;
-        if (transmission != null && !transmission.isDecoded()) {
-            res = scanner.attemptDecode(transmission.getId(), currentFreq, state);
-        } else {
-            res = scanner.attemptDecodeAny(currentFreq, state);
-        }
+        SubSpaceScanner.DecodeResult res = scanner.attemptDecodeAny(currentFreq, state);
 
         lblFeedback.setText(res.getFeedback());
         if (res.isLocked()) {
@@ -367,12 +441,15 @@ public class FrequencyDecoderDialog extends JDialog {
             btnLock.setEnabled(false);
             btnLock.setText("✓ DECRYPTED & LOGGED IN ARCHIVE");
             btnLock.setBackground(new Color(30, 100, 50));
+            updateSignalStrengthPreview(currentFreq);
             JOptionPane.showMessageDialog(this,
                     "CARRIER FREQUENCY LOCKED (" + String.format(java.util.Locale.US, "%.1f", transmission.getTargetFrequencyMHz()) + " MHz)!\n\n"
                     + "Transmission decrypted: " + transmission.getTitle() + "\n\n"
                     + String.format("Rewards: +%d Eezo, +%d Biomass deposited into fleet reserves.",
                             transmission.getEezoReward(), transmission.getBiomassReward()),
                     "Decryption Successful", JOptionPane.INFORMATION_MESSAGE);
+        } else {
+            updateSignalStrengthPreview(currentFreq);
         }
     }
 
