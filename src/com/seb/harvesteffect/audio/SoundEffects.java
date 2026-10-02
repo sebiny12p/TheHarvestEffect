@@ -11,6 +11,10 @@ import javax.sound.sampled.SourceDataLine;
 public class SoundEffects {
     private static volatile boolean soundEnabled = true;
     private static final float SAMPLE_RATE = 44100f;
+    private static volatile boolean ambientRunning = false;
+    private static Thread ambientThread = null;
+    private static SourceDataLine ambientLine = null;
+    private static final Object ambientLock = new Object();
 
     public static boolean isSoundEnabled() {
         return soundEnabled;
@@ -18,6 +22,46 @@ public class SoundEffects {
 
     public static void setSoundEnabled(boolean enabled) {
         soundEnabled = enabled;
+        if (enabled) {
+            startAmbience();
+        } else {
+            stopAmbience();
+        }
+    }
+
+    public static synchronized void startAmbience() {
+        if (!soundEnabled) return;
+        synchronized (ambientLock) {
+            if (ambientRunning) return;
+            ambientRunning = true;
+            ambientThread = new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    runAmbienceLoop();
+                }
+            }, "ReaperAmbienceThread");
+            ambientThread.setDaemon(true);
+            ambientThread.start();
+        }
+    }
+
+    public static synchronized void stopAmbience() {
+        synchronized (ambientLock) {
+            ambientRunning = false;
+            if (ambientLine != null) {
+                try {
+                    ambientLine.stop();
+                    ambientLine.flush();
+                    ambientLine.close();
+                } catch (Exception ignored) {}
+                ambientLine = null;
+            }
+            ambientThread = null;
+        }
+    }
+
+    public static boolean isAmbienceRunning() {
+        return ambientRunning;
     }
 
     public static void playReaperHorn() {
@@ -196,6 +240,57 @@ public class SoundEffects {
                 try {
                     line.close();
                 } catch (Exception ignored) {}
+            }
+        }
+    }
+
+    private static void runAmbienceLoop() {
+        SourceDataLine line = null;
+        try {
+            float ambSampleRate = 22050f;
+            AudioFormat format = new AudioFormat(ambSampleRate, 8, 1, true, true);
+            line = AudioSystem.getSourceDataLine(format);
+            line.open(format, 4096);
+            line.start();
+            synchronized (ambientLock) {
+                ambientLine = line;
+            }
+
+            int bufSize = 2048;
+            byte[] buf = new byte[bufSize];
+            long sampleIndex = 0;
+            java.util.Random rnd = new java.util.Random();
+
+            while (ambientRunning && soundEnabled) {
+                for (int i = 0; i < bufSize; i++) {
+                    double t = sampleIndex / (double) ambSampleRate;
+                    // Dark sub-bass binaural drone (44.0 Hz + 46.5 Hz beating at 2.5 Hz)
+                    double wave1 = Math.sin(2 * Math.PI * 44.0 * t);
+                    double wave2 = Math.sin(2 * Math.PI * 46.5 * t) * 0.75;
+                    // Deep dark harmonic resonance at 88 Hz & 132 Hz
+                    double wave3 = Math.sin(2 * Math.PI * 88.0 * t) * 0.25;
+                    double wave4 = Math.sin(2 * Math.PI * 132.0 * t) * 0.12;
+                    // Slow 7-second cosmic pulse (LFO)
+                    double lfo = 0.65 + 0.35 * Math.sin(2 * Math.PI * 0.14 * t);
+                    // Extremely gentle pink-noise cosmic whisper
+                    double noise = (rnd.nextDouble() - 0.5) * 0.12;
+                    double sample = (wave1 + wave2 + wave3 + wave4 + noise) * lfo * 14.0;
+                    buf[i] = (byte) Math.max(-128, Math.min(127, (int) Math.round(sample)));
+                    sampleIndex++;
+                }
+                line.write(buf, 0, bufSize);
+            }
+        } catch (Exception ignored) {
+        } finally {
+            if (line != null) {
+                try {
+                    line.stop();
+                    line.close();
+                } catch (Exception ignored) {}
+            }
+            synchronized (ambientLock) {
+                if (ambientLine == line) ambientLine = null;
+                ambientRunning = false;
             }
         }
     }

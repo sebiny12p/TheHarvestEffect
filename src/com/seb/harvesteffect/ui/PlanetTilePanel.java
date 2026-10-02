@@ -50,6 +50,7 @@ public class PlanetTilePanel extends JPanel {
             @Override
             public void mouseEntered(MouseEvent e) {
                 isHovered = true;
+                updateTooltip();
                 repaint();
             }
 
@@ -59,25 +60,66 @@ public class PlanetTilePanel extends JPanel {
                 repaint();
             }
         });
+        updateTooltip();
+    }
+
+    public void updateTooltip() {
+        if (system == null) {
+            setToolTipText(null);
+            return;
+        }
+        StringBuilder sb = new StringBuilder("<html><body style='background-color:#0d121d; color:#cce; padding:6px; font-family:monospace;'>");
+        sb.append("<b style='color:#00e5ff; font-size:12px;'>").append(system.getSystemName())
+          .append(" [").append(system.getSector()).append(",").append(system.getCluster()).append("]</b><br>");
+        sb.append("Climate: <b style='color:#ffe082;'>").append(system.getClimateType().getDisplayName()).append("</b><br>");
+        if (isSectorLocked) {
+            sb.append("<span style='color:#ff5252;'>🔒 Sector Locked (Requires Primary Relay)</span>");
+        } else if (system.getCivilization() != null) {
+            Civilization civ = system.getCivilization();
+            sb.append("Civilization: <b style='color:#ffffff;'>").append(civ.getSpeciesName()).append("</b> (Tier ").append(civ.getEvolutionaryTier()).append(")<br>");
+            sb.append("Population: ").append(civ.getPopulationBillions()).append("B organics<br>");
+            sb.append("Climate Affinity: <span style='color:#81d4fa;'>").append(system.getClimateType().getAffinityLabel(civ.getSpeciesName())).append("</span><br>");
+            sb.append("Status: ").append(civ.isHarvestReady() ? "<b style='color:#ffd700;'>🌾 RIPE FOR HARVEST!</b>" : "<span style='color:#aaa;'>Incubating (Stage " + (civ.getEvolutionaryTier() + 1) + "/3)</span>").append("<br>");
+            if (civ.hasKineticBarrier()) sb.append("<span style='color:#4fc3f7;'>🛡️ Kinetic Barrier Active</span><br>");
+        } else {
+            sb.append("Status: <span style='color:#81c784;'>Lifeless World (Ready for Seeding)</span><br>");
+            sb.append("Favorable Species: ").append(system.getClimateType().getFavorableSpeciesNames()).append("<br>");
+        }
+        if (system.getBiomechanicalUnit() != null) {
+            sb.append("Garrison: <b style='color:#ffb74d;'>").append(system.getBiomechanicalUnit().getDesignation()).append("</b><br>");
+        }
+        if (isFlagshipStationed) {
+            sb.append("<b style='color:#ff5252;'>👑 Sovereign Flagship Stationed</b><br>");
+        }
+        if (system.isRelayBeamActive()) {
+            sb.append("<span style='color:#00e5ff;'>✦ Relay Beam Active (+50% Eezo)</span><br>");
+        }
+        sb.append("<span style='color:#ffb300; font-size:9px;'>[Click to Target]</span>");
+        sb.append("</body></html>");
+        setToolTipText(sb.toString());
     }
 
     public void setSelected(boolean selected) {
         this.isSelected = selected;
+        updateTooltip();
         repaint();
     }
 
     public void setFlagshipStationed(boolean stationed) {
         this.isFlagshipStationed = stationed;
+        updateTooltip();
         repaint();
     }
 
     public void setSectorLocked(boolean locked) {
         this.isSectorLocked = locked;
+        updateTooltip();
         repaint();
     }
 
     public void setSystem(StarSystem system) {
         this.system = system;
+        updateTooltip();
         repaint();
     }
 

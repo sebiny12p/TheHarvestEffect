@@ -23,6 +23,7 @@ public class MainMenuPanel extends JPanel {
     }
 
     private JButton btnContinue;
+    private JButton btnMainAudio;
 
     public MainMenuPanel(final MenuListener listener) {
         setLayout(new BorderLayout(20, 20));
@@ -130,10 +131,33 @@ public class MainMenuPanel extends JPanel {
         add(centerWrapper, BorderLayout.CENTER);
 
         // 3. Footer
+        JPanel footerPanel = new JPanel(new BorderLayout());
+        footerPanel.setOpaque(false);
         JLabel lblFooter = new JLabel("Object-Oriented Programming in Java | Swing & CLI", SwingConstants.CENTER);
         lblFooter.setFont(new Font("Monospaced", Font.PLAIN, 11));
         lblFooter.setForeground(new Color(100, 120, 150));
-        add(lblFooter, BorderLayout.SOUTH);
+        footerPanel.add(lblFooter, BorderLayout.CENTER);
+
+        btnMainAudio = new JButton(SoundEffects.isSoundEnabled() ? "🔊 Audio: ON" : "🔇 Audio: OFF");
+        btnMainAudio.setFont(new Font("Monospaced", Font.PLAIN, 11));
+        btnMainAudio.setBackground(new Color(20, 26, 38));
+        btnMainAudio.setForeground(new Color(170, 200, 230));
+        btnMainAudio.setFocusPainted(false);
+        btnMainAudio.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                SoundEffects.setSoundEnabled(!SoundEffects.isSoundEnabled());
+                refreshAudioToggleText();
+            }
+        });
+        footerPanel.add(btnMainAudio, BorderLayout.EAST);
+        add(footerPanel, BorderLayout.SOUTH);
+    }
+
+    public void refreshAudioToggleText() {
+        if (btnMainAudio != null) {
+            btnMainAudio.setText(SoundEffects.isSoundEnabled() ? "🔊 Audio: ON" : "🔇 Audio: OFF");
+        }
     }
 
     public void refreshMenuState() {

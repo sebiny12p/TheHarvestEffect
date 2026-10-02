@@ -10,6 +10,7 @@ import com.seb.harvesteffect.story.StoryDilemma;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -70,6 +71,7 @@ public class HarvestGUI extends JFrame {
     private JButton btnAudioToggle;
     private JButton btnScanner;
     private JButton btnQuickFreq;
+    private JButton btnCycleStats;
     private JButton btnJumpFlagship;
     private Timer realTimeTimer;
     private boolean realTimePaused = false;
@@ -103,6 +105,8 @@ public class HarvestGUI extends JFrame {
 
         initLookAndFeel();
         buildCardContainer();
+        registerKeyboardShortcuts();
+        SoundEffects.startAmbience();
 
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1280, 920);
@@ -426,6 +430,7 @@ public class HarvestGUI extends JFrame {
 
         btnAdvance = createActionButton("⏩ ADVANCE TIME (+5,000 Y)", new Color(0, 150, 80));
         btnAdvance.setFont(new Font("SansSerif", Font.BOLD, 13));
+        btnAdvance.setToolTipText("Advance galactic epoch by 5,000 years [Shortcut: Spacebar]");
         btnAdvance.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -550,6 +555,7 @@ public class HarvestGUI extends JFrame {
         btnJumpFlagship.setFont(new Font("SansSerif", Font.BOLD, 11));
         btnJumpFlagship.setBackground(new Color(180, 130, 20));
         btnJumpFlagship.setForeground(Color.WHITE);
+        btnJumpFlagship.setToolTipText("Jump Sovereign Flagship to selected planetary orbit [Shortcut: J]");
         btnJumpFlagship.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -610,10 +616,12 @@ public class HarvestGUI extends JFrame {
                 showTechTreeDialog();
             }
         });
+        btnTechTree.setToolTipText("Research advanced technologies and construct Primary Relays [Shortcut: R]");
         systemsDock.add(btnTechTree);
 
         btnNexus = new JButton("🏛️ Citadel Nexus");
         btnNexus.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        btnNexus.setToolTipText("Inspect Citadel Nexus mega-structure and manage conduits [Shortcut: C]");
         btnNexus.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -653,6 +661,7 @@ public class HarvestGUI extends JFrame {
         btnBioBanks.setFont(new Font("SansSerif", Font.BOLD, 11));
         btnBioBanks.setBackground(new Color(110, 40, 140));
         btnBioBanks.setForeground(Color.WHITE);
+        btnBioBanks.setToolTipText("Synthesize and sequence specialized organic genomes in Reaper Bio-Banks [Shortcut: B]");
         btnBioBanks.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -666,6 +675,7 @@ public class HarvestGUI extends JFrame {
         btnCargoHold.setFont(new Font("SansSerif", Font.BOLD, 11));
         btnCargoHold.setBackground(new Color(25, 90, 110));
         btnCargoHold.setForeground(Color.WHITE);
+        btnCargoHold.setToolTipText("View harvested specimen pods and ship cargo manifest [Shortcut: H]");
         btnCargoHold.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -689,7 +699,7 @@ public class HarvestGUI extends JFrame {
         btnScanner.setFont(new Font("SansSerif", Font.BOLD, 11));
         btnScanner.setBackground(new Color(0, 160, 215));
         btnScanner.setForeground(Color.WHITE);
-        btnScanner.setToolTipText("Tune Sub-Space Radio (100.0 - 999.0 MHz) to scan for secret transmissions and easter eggs");
+        btnScanner.setToolTipText("Tune Sub-Space Radio (100.0 - 999.0 MHz) to scan for secret transmissions [Shortcut: F]");
         btnScanner.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -701,12 +711,11 @@ public class HarvestGUI extends JFrame {
 
         btnAudioToggle = new JButton("Audio: " + (SoundEffects.isSoundEnabled() ? "ON" : "OFF"));
         btnAudioToggle.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        btnAudioToggle.setToolTipText("Toggle audio sound effects and cosmic background ambience [Shortcut: A]");
         btnAudioToggle.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                SoundEffects.setSoundEnabled(!SoundEffects.isSoundEnabled());
-                btnAudioToggle.setText("Audio: " + (SoundEffects.isSoundEnabled() ? "ON" : "OFF"));
-                log("Audio Synthesis: " + (SoundEffects.isSoundEnabled() ? "ENABLED" : "MUTED"));
+                toggleAudioAction();
             }
         });
         systemsDock.add(btnAudioToggle);
@@ -765,6 +774,7 @@ public class HarvestGUI extends JFrame {
         btnManageCitadel.setBackground(new Color(30, 90, 140));
         btnManageCitadel.setForeground(Color.WHITE);
         btnManageCitadel.setFocusPainted(false);
+        btnManageCitadel.setToolTipText("Inspect Citadel Nexus mega-structure and manage conduits [Shortcut: C]");
         btnManageCitadel.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -778,6 +788,7 @@ public class HarvestGUI extends JFrame {
         btnCitadelLockdown.setBackground(new Color(140, 40, 50));
         btnCitadelLockdown.setForeground(Color.WHITE);
         btnCitadelLockdown.setFocusPainted(false);
+        btnCitadelLockdown.setToolTipText("Engage Citadel Arms Lockdown to freeze Allied Crucible construction");
         btnCitadelLockdown.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -838,25 +849,17 @@ public class HarvestGUI extends JFrame {
             }
         });
 
-        btnToggleMapView = new JButton("⊞ Switch to Grid Matrix");
-        btnToggleMapView.setFont(new Font("SansSerif", Font.BOLD, 11));
-        btnToggleMapView.setBackground(new Color(25, 45, 75));
-        btnToggleMapView.setForeground(new Color(0, 230, 255));
-        btnToggleMapView.setFocusPainted(false);
-        btnToggleMapView.addActionListener(new ActionListener() {
+        btnCycleStats = new JButton("📊 Chronicle");
+        btnCycleStats.setFont(new Font("SansSerif", Font.BOLD, 11));
+        btnCycleStats.setBackground(new Color(45, 30, 75));
+        btnCycleStats.setForeground(new Color(230, 200, 255));
+        btnCycleStats.setFocusPainted(false);
+        btnCycleStats.setToolTipText("Ascension Chronicle: View lifetime cycle harvest statistics and archives [Shortcut: S]");
+        btnCycleStats.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 SoundEffects.playUiClick();
-                isMapViewActive = !isMapViewActive;
-                if (isMapViewActive) {
-                    galaxyCardLayout.show(galaxyCenterCards, "MAP");
-                    btnToggleMapView.setText("⊞ Switch to Grid Matrix");
-                    btnToggleMapView.setBackground(new Color(25, 45, 75));
-                } else {
-                    galaxyCardLayout.show(galaxyCenterCards, "GRID");
-                    btnToggleMapView.setText("🌌 Switch to Star Chart");
-                    btnToggleMapView.setBackground(new Color(50, 30, 80));
-                }
+                showCycleStatisticsDialog();
             }
         });
 
@@ -865,7 +868,7 @@ public class HarvestGUI extends JFrame {
         btnQuickFreq.setBackground(new Color(0, 140, 190));
         btnQuickFreq.setForeground(Color.WHITE);
         btnQuickFreq.setFocusPainted(false);
-        btnQuickFreq.setToolTipText("Tune sub-space frequencies (100.0 - 999.0 MHz) to intercept hidden transmissions");
+        btnQuickFreq.setToolTipText("Tune sub-space frequencies (100.0 - 999.0 MHz) to intercept hidden transmissions [Shortcut: F]");
         btnQuickFreq.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -874,8 +877,22 @@ public class HarvestGUI extends JFrame {
             }
         });
 
+        btnToggleMapView = new JButton("⊞ Switch to Grid Matrix");
+        btnToggleMapView.setFont(new Font("SansSerif", Font.BOLD, 11));
+        btnToggleMapView.setBackground(new Color(25, 45, 75));
+        btnToggleMapView.setForeground(new Color(0, 230, 255));
+        btnToggleMapView.setFocusPainted(false);
+        btnToggleMapView.setToolTipText("Toggle between Star Chart map view and Grid Matrix tile view [Shortcut: M]");
+        btnToggleMapView.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                toggleMapView();
+            }
+        });
+
         hubButtons.add(btnManageCitadel);
         hubButtons.add(btnCitadelLockdown);
+        hubButtons.add(btnCycleStats);
         hubButtons.add(btnQuickFreq);
         hubButtons.add(btnToggleMapView);
         hubPanel.add(hubButtons, BorderLayout.EAST);
@@ -2842,5 +2859,349 @@ public class HarvestGUI extends JFrame {
 
         dlg.setContentPane(content);
         dlg.setVisible(true);
+    }
+
+    private void toggleMapView() {
+        if (galaxyCardLayout == null || galaxyCenterCards == null || btnToggleMapView == null) return;
+        SoundEffects.playUiClick();
+        isMapViewActive = !isMapViewActive;
+        if (isMapViewActive) {
+            galaxyCardLayout.show(galaxyCenterCards, "MAP");
+            btnToggleMapView.setText("⊞ Switch to Grid Matrix");
+            btnToggleMapView.setBackground(new Color(25, 45, 75));
+        } else {
+            galaxyCardLayout.show(galaxyCenterCards, "GRID");
+            btnToggleMapView.setText("🌌 Switch to Star Chart");
+            btnToggleMapView.setBackground(new Color(50, 30, 80));
+        }
+    }
+
+    private void toggleAudioAction() {
+        SoundEffects.setSoundEnabled(!SoundEffects.isSoundEnabled());
+        boolean enabled = SoundEffects.isSoundEnabled();
+        if (btnAudioToggle != null) {
+            btnAudioToggle.setText("Audio: " + (enabled ? "ON" : "OFF"));
+        }
+        if (mainMenuPanel != null) {
+            mainMenuPanel.refreshAudioToggleText();
+        }
+        log("Audio Synthesis: " + (enabled ? "ENABLED" : "MUTED"));
+    }
+
+    private void showCycleStatisticsDialog() {
+        JDialog dlg = new JDialog(this, "Ascension Chronicle — Lifetime Reaper Metrics", true);
+        dlg.setSize(760, 640);
+        dlg.setLocationRelativeTo(this);
+
+        JPanel content = new JPanel(new BorderLayout(10, 10));
+        content.setBackground(new Color(10, 13, 22));
+        content.setBorder(BorderFactory.createEmptyBorder(12, 14, 12, 14));
+
+        // Header
+        JPanel header = new JPanel(new GridLayout(2, 1, 2, 2));
+        header.setOpaque(false);
+        header.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(new Color(150, 70, 210), 1),
+                BorderFactory.createEmptyBorder(8, 12, 8, 12)
+        ));
+        JLabel lblTitle = new JLabel("ASCENSION CHRONICLE // REAPER ARCHIVE", SwingConstants.CENTER);
+        lblTitle.setFont(new Font("Monospaced", Font.BOLD, 16));
+        lblTitle.setForeground(new Color(230, 190, 255));
+        JLabel lblSubtitle = new JLabel(String.format("Flagship: %s | Epoch %d (%,d Galactic Years) | %s",
+                state.getFlagshipName(),
+                state.getCycleEpoch(),
+                (long) (state.getCycleEpoch() - 1) * 5000L,
+                campaign.getCurrentAct().getTitle()), SwingConstants.CENTER);
+        lblSubtitle.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        lblSubtitle.setForeground(new Color(160, 180, 210));
+        header.add(lblTitle);
+        header.add(lblSubtitle);
+        content.add(header, BorderLayout.NORTH);
+
+        // Compute metrics
+        int totalSystems = 24;
+        int activeCivilizations = 0;
+        int readyHarvests = 0;
+        int activeRelays = 0;
+        int collectorDrones = 0;
+        int huskSwarms = 0;
+        int scionBehemoths = 0;
+        int kineticBarriersActive = 0;
+        int unlockedSectors = 0;
+
+        for (int s = 0; s < state.getGalaxyMap().getRowCount(); s++) {
+            if (state.getGalaxyMap().isSectorUnlocked(s)) {
+                unlockedSectors++;
+            }
+            for (int c = 0; c < state.getGalaxyMap().getColCount(); c++) {
+                StarSystem sys = state.getGalaxyMap().getSystem(s, c);
+                if (sys.getCivilization() != null) {
+                    activeCivilizations++;
+                    if (sys.getCivilization().isHarvestReady()) {
+                        readyHarvests++;
+                    }
+                    if (sys.getCivilization().hasKineticBarrier()) {
+                        kineticBarriersActive++;
+                    }
+                }
+                if (sys.isRelayBeaconDeployed()) {
+                    activeRelays++;
+                }
+                if (sys.getBiomechanicalUnit() != null) {
+                    String d = sys.getBiomechanicalUnit().getDesignation().toLowerCase();
+                    if (d.contains("drone") || d.contains("collector")) collectorDrones++;
+                    else if (d.contains("husk")) huskSwarms++;
+                    else if (d.contains("scion") || d.contains("behemoth")) scionBehemoths++;
+                }
+            }
+        }
+
+        int totalUnits = collectorDrones + huskSwarms + scionBehemoths;
+        CitadelNexus nexus = engine.getNexus();
+        SubSpaceScanner scanner = engine.getScanner();
+        int discoveredSignals = scanner.getAllDiscoveredSignals().size();
+        int decodedSignals = scanner.getDecodedArchive().size();
+
+        // Grid of category panels
+        JPanel cardsGrid = new JPanel(new GridLayout(3, 2, 10, 10));
+        cardsGrid.setOpaque(false);
+
+        // 1. Ascension & Genetic Harvest
+        cardsGrid.add(createChronicleCard("🧬 BIOMASS & ASCENSION METRICS", new Color(130, 45, 170), new String[][] {
+                { "Total Ascensions Executed:", String.format("%d civilizations reaped", campaign.getTotalAscensions()) },
+                { "Current Biomass Reserves:", String.format("%,d Biomass Units", state.getAccumulatedBiomass()) },
+                { "Element Zero Reserves:", String.format("%,d Eezo", state.getEezoReserves()) },
+                { "Specimen Pods in Cargo:", String.format("%d / %d pods stored", state.countCargoSpecimens(), state.getCargoHold().getCapacity()) }
+        }));
+
+        // 2. Galactic Nursery State
+        cardsGrid.add(createChronicleCard("🌌 GALACTIC NURSERY STATUS", new Color(30, 100, 160), new String[][] {
+                { "Active Populated Worlds:", String.format("%d / %d star systems", activeCivilizations, totalSystems) },
+                { "Apex Zenith Crops Ready:", String.format("%d worlds primed for harvest", readyHarvests) },
+                { "Orbital Kinetic Barriers:", String.format("%d worlds shielded", kineticBarriersActive) },
+                { "Connected Sectors (Relays):", String.format("%d / 4 galactic sectors", unlockedSectors) }
+        }));
+
+        // 3. Biomechanical Swarm Fleet
+        cardsGrid.add(createChronicleCard("🤖 SWARM DEPLOYMENT MANIFEST", new Color(40, 130, 90), new String[][] {
+                { "Total Units Stationed:", String.format("%d biomechanical constructs", totalUnits) },
+                { "Collector Drone Catalysts:", String.format("%d active (growth acceleration)", collectorDrones) },
+                { "Husk Swarm Infiltrators:", String.format("%d active (barrier infiltration)", huskSwarms) },
+                { "Scion Siege Behemoths:", String.format("%d active (barrier crushing)", scionBehemoths) }
+        }));
+
+        // 4. Citadel Nexus Mega-Structure
+        String lockdownStatus = nexus.isArmsLockdownActive()
+                ? String.format("SEALED (%d epochs remaining)", nexus.getLockdownDurationRemaining())
+                : (nexus.getLockdownCooldownRemaining() > 0
+                    ? String.format("OPEN (Recharging: %d epochs)", nexus.getLockdownCooldownRemaining())
+                    : "OPEN (Ready to seal)");
+
+        cardsGrid.add(createChronicleCard("🏛️ CITADEL NEXUS MEGASYSTEM", new Color(180, 120, 20), new String[][] {
+                { "Citadel Core Tier:", String.format("Tier %d: %s", nexus.getCurrentTier(), nexus.getTierName()) },
+                { "Active Relay Beacons:", String.format("%d / 24 star systems", activeRelays) },
+                { "Arms Lockdown Status:", lockdownStatus },
+                { "Harvest Relay Multiplier:", String.format("%.2fx yield bonus", nexus.getHarvestRelayBonusMultiplier()) }
+        }));
+
+        // 5. Intelligence & Sub-Space Scanner
+        cardsGrid.add(createChronicleCard("📻 SUB-SPACE INTELLIGENCE", new Color(0, 140, 180), new String[][] {
+                { "Intercepted Transmissions:", String.format("%d / 7 anomalous carrier waves", discoveredSignals) },
+                { "Decrypted Easter Eggs:", String.format("%d / 7 transmissions decoded", decodedSignals) },
+                { "Pending Undecoded Signals:", scanner.hasPendingUndecodedSignal() ? "DETECTED (Frequency lock pending)" : "None active" },
+                { "Cosmic Phenomenon:", state.getCurrentPhenomenon().getTitle() }
+        }));
+
+        // 6. Alliance Crucible Threat
+        String victoryStr = campaign.isCampaignVictory()
+                ? "VICTORY (Galactic Convergence Achieved)"
+                : (campaign.isCrucibleDefeat() ? "DEFEAT (Crucible Fired)" : "WAR IN PROGRESS");
+
+        cardsGrid.add(createChronicleCard("⚠️ ALLIANCE CRUCIBLE INTEL", new Color(175, 45, 45), new String[][] {
+                { "Current Campaign Act:", campaign.getCurrentAct().name() },
+                { "Crucible Threat Clock:", String.format("%d%% construction progress", campaign.getCrucibleProgress()) },
+                { "War Outcome Status:", victoryStr },
+                { "Sovereign Flagship Orbit:", String.format("%s [%d, %d]",
+                        state.getGalaxyMap().getSystem(state.getFlagshipSector(), state.getFlagshipCluster()).getSystemName(),
+                        state.getFlagshipSector(), state.getFlagshipCluster()) }
+        }));
+
+        content.add(cardsGrid, BorderLayout.CENTER);
+
+        // Bottom close button
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        bottom.setOpaque(false);
+        JButton btnClose = new JButton("Close Ascension Chronicle");
+        btnClose.setFont(new Font("SansSerif", Font.BOLD, 12));
+        btnClose.setBackground(new Color(40, 50, 75));
+        btnClose.setForeground(Color.WHITE);
+        btnClose.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                dlg.dispose();
+            }
+        });
+        bottom.add(btnClose);
+        content.add(bottom, BorderLayout.SOUTH);
+
+        dlg.setContentPane(content);
+        dlg.setVisible(true);
+    }
+
+    private JPanel createChronicleCard(String title, Color borderColor, String[][] rows) {
+        JPanel card = new JPanel(new BorderLayout(4, 4));
+        card.setBackground(new Color(16, 22, 34));
+        card.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(borderColor, 1),
+                BorderFactory.createEmptyBorder(8, 10, 8, 10)
+        ));
+
+        JLabel lblTitle = new JLabel(title);
+        lblTitle.setFont(new Font("Monospaced", Font.BOLD, 12));
+        lblTitle.setForeground(borderColor.brighter());
+        card.add(lblTitle, BorderLayout.NORTH);
+
+        JPanel rowsPanel = new JPanel(new GridLayout(rows.length, 1, 2, 2));
+        rowsPanel.setOpaque(false);
+
+        for (String[] r : rows) {
+            JPanel rowPanel = new JPanel(new BorderLayout(6, 2));
+            rowPanel.setOpaque(false);
+
+            JLabel lblKey = new JLabel(r[0]);
+            lblKey.setFont(new Font("SansSerif", Font.PLAIN, 11));
+            lblKey.setForeground(new Color(160, 180, 205));
+
+            JLabel lblVal = new JLabel(r[1], SwingConstants.RIGHT);
+            lblVal.setFont(new Font("SansSerif", Font.BOLD, 11));
+            lblVal.setForeground(Color.WHITE);
+
+            rowPanel.add(lblKey, BorderLayout.WEST);
+            rowPanel.add(lblVal, BorderLayout.EAST);
+            rowsPanel.add(rowPanel);
+        }
+
+        card.add(rowsPanel, BorderLayout.CENTER);
+        return card;
+    }
+
+    private void registerKeyboardShortcuts() {
+        JRootPane root = getRootPane();
+        if (root == null) return;
+
+        InputMap im = root.getInputMap(JComponent.WHEN_IN_FOCUSED_WINDOW);
+        ActionMap am = root.getActionMap();
+
+        registerKey(im, am, KeyStroke.getKeyStroke(KeyEvent.VK_SPACE, 0), "ADVANCE_EPOCH", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (isEditingText() || !isGameScreenActive()) return;
+                if (btnAdvance != null && btnAdvance.isEnabled()) {
+                    btnAdvance.doClick();
+                }
+            }
+        });
+
+        registerKey(im, am, KeyStroke.getKeyStroke(KeyEvent.VK_R, 0), "OPEN_RESEARCH", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (isEditingText() || !isGameScreenActive()) return;
+                if (btnTechTree != null && btnTechTree.isEnabled()) {
+                    btnTechTree.doClick();
+                }
+            }
+        });
+
+        registerKey(im, am, KeyStroke.getKeyStroke(KeyEvent.VK_C, 0), "OPEN_CITADEL", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (isEditingText() || !isGameScreenActive()) return;
+                if (btnNexus != null && btnNexus.isEnabled()) {
+                    btnNexus.doClick();
+                }
+            }
+        });
+
+        registerKey(im, am, KeyStroke.getKeyStroke(KeyEvent.VK_F, 0), "OPEN_FREQUENCY_TUNER", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (isEditingText() || !isGameScreenActive()) return;
+                if (btnQuickFreq != null && btnQuickFreq.isEnabled()) {
+                    btnQuickFreq.doClick();
+                }
+            }
+        });
+
+        registerKey(im, am, KeyStroke.getKeyStroke(KeyEvent.VK_S, 0), "OPEN_CHRONICLE", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (isEditingText() || !isGameScreenActive()) return;
+                if (btnCycleStats != null && btnCycleStats.isEnabled()) {
+                    btnCycleStats.doClick();
+                } else {
+                    showCycleStatisticsDialog();
+                }
+            }
+        });
+
+        registerKey(im, am, KeyStroke.getKeyStroke(KeyEvent.VK_M, 0), "TOGGLE_MAP_VIEW", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (isEditingText() || !isGameScreenActive()) return;
+                toggleMapView();
+            }
+        });
+
+        registerKey(im, am, KeyStroke.getKeyStroke(KeyEvent.VK_B, 0), "OPEN_BIO_BANKS", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (isEditingText() || !isGameScreenActive()) return;
+                if (btnBioBanks != null && btnBioBanks.isEnabled()) {
+                    btnBioBanks.doClick();
+                }
+            }
+        });
+
+        registerKey(im, am, KeyStroke.getKeyStroke(KeyEvent.VK_H, 0), "OPEN_CARGO_HOLD", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (isEditingText() || !isGameScreenActive()) return;
+                if (btnCargoHold != null && btnCargoHold.isEnabled()) {
+                    btnCargoHold.doClick();
+                }
+            }
+        });
+
+        registerKey(im, am, KeyStroke.getKeyStroke(KeyEvent.VK_J, 0), "JUMP_SOVEREIGN", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (isEditingText() || !isGameScreenActive()) return;
+                if (btnJumpFlagship != null && btnJumpFlagship.isEnabled()) {
+                    btnJumpFlagship.doClick();
+                }
+            }
+        });
+
+        registerKey(im, am, KeyStroke.getKeyStroke(KeyEvent.VK_A, 0), "TOGGLE_AUDIO", new AbstractAction() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (isEditingText()) return;
+                toggleAudioAction();
+            }
+        });
+    }
+
+    private boolean isEditingText() {
+        Component c = KeyboardFocusManager.getCurrentKeyboardFocusManager().getFocusOwner();
+        return c instanceof javax.swing.text.JTextComponent;
+    }
+
+    private boolean isGameScreenActive() {
+        return gamePanel != null && gamePanel.isShowing();
+    }
+
+    private void registerKey(InputMap im, ActionMap am, KeyStroke stroke, String key, Action action) {
+        im.put(stroke, key);
+        am.put(key, action);
     }
 }

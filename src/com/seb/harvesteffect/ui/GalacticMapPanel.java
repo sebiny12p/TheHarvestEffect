@@ -956,8 +956,14 @@ public class GalacticMapPanel extends JPanel implements Serializable {
     }
 
     private void drawPlanetHUDCard(Graphics2D g2, int w, int h, StarSystem sys, int sec, int clu, boolean unlocked) {
-        int cardW = 260;
-        int cardH = unlocked ? 160 : 85;
+        Civilization civ = sys.getCivilization();
+        boolean hasUnit = (sys.getBiomechanicalUnit() != null);
+        boolean hasFlagship = (sec == state.getFlagshipSector() && clu == state.getFlagshipCluster());
+        boolean hasColony = (civ != null && civ.getEvolutionaryTier() >= 2);
+        int extraLines = (hasUnit ? 1 : 0) + (hasFlagship ? 1 : 0) + (hasColony ? 1 : 0);
+
+        int cardW = 275;
+        int cardH = unlocked ? (160 + extraLines * 16) : 85;
         int cardX = Math.min(w - cardW - 15, Math.max(15, mousePos.x + 15));
         int cardY = Math.min(h - cardH - 15, Math.max(15, mousePos.y - 40));
 
@@ -987,7 +993,6 @@ public class GalacticMapPanel extends JPanel implements Serializable {
             return;
         }
 
-        Civilization civ = sys.getCivilization();
         int y = cardY + 48;
 
         g2.setFont(new Font("SansSerif", Font.PLAIN, 10));
@@ -1021,6 +1026,7 @@ public class GalacticMapPanel extends JPanel implements Serializable {
                     + (sys.isRelayBeamActive() ? " | ✦ Relay Linked" : "");
             g2.setColor(new Color(130, 200, 255));
             g2.drawString(defText, cardX + 10, y);
+            y += 15;
         } else {
             g2.setColor(new Color(160, 180, 200));
             g2.drawString("Status: Lifeless World (Ready for Seeding)", cardX + 10, y);
@@ -1028,6 +1034,28 @@ public class GalacticMapPanel extends JPanel implements Serializable {
             g2.drawString("Favorable Crops: " + sys.getClimateType().getFavorableSpeciesNames(), cardX + 10, y);
             y += 16;
             g2.drawString("Relay Conduit: " + (sys.isRelayBeamActive() ? "✦ Active (+50% Eezo)" : "Offline"), cardX + 10, y);
+            y += 16;
+        }
+
+        // Garrison Drone Info
+        if (hasUnit) {
+            g2.setColor(new Color(255, 180, 50));
+            g2.drawString("🤖 Garrison: " + sys.getBiomechanicalUnit().getDesignation() + " (" + sys.getBiomechanicalUnit().getEnergyLevel() + "% Power)", cardX + 10, y);
+            y += 15;
+        }
+
+        // Sovereign Presence
+        if (hasFlagship) {
+            g2.setColor(new Color(255, 80, 90));
+            g2.drawString("👑 Sovereign Flagship Stationed", cardX + 10, y);
+            y += 15;
+        }
+
+        // Colony Outpost
+        if (hasColony) {
+            g2.setColor(new Color(100, 255, 180));
+            g2.drawString("🚀 Autonomous Colony Outpost Active", cardX + 10, y);
+            y += 15;
         }
 
         // Action prompt footer
