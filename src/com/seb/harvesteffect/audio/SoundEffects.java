@@ -247,38 +247,110 @@ public class SoundEffects {
     private static void runAmbienceLoop() {
         SourceDataLine line = null;
         try {
-            float ambSampleRate = 22050f;
-            AudioFormat format = new AudioFormat(ambSampleRate, 8, 1, true, true);
+            float ambSampleRate = 44100f;
+            AudioFormat format = new AudioFormat(ambSampleRate, 16, 1, true, false);
             line = AudioSystem.getSourceDataLine(format);
-            line.open(format, 4096);
+            line.open(format, 16384);
             line.start();
             synchronized (ambientLock) {
                 ambientLine = line;
             }
 
-            int bufSize = 2048;
-            byte[] buf = new byte[bufSize];
+            int numSamples = 2048;
+            byte[] buf = new byte[numSamples * 2];
             long sampleIndex = 0;
-            java.util.Random rnd = new java.util.Random();
+
+            // Sci-Fi Analog Synth Chord Progression (Dm9 -> BbMaj7 -> F/C -> Gm9)
+            // Lush, cinematic space chords reminiscent of classic sci-fi space exploration themes
+            double[][] chordNotes = {
+                { 73.42, 146.83, 174.61, 220.00, 261.63, 329.63 }, // Dm9 (Deep dark space)
+                { 58.27, 146.83, 174.61, 220.00, 293.66, 349.23 }, // BbMaj7 (Mass Relay wonder)
+                { 65.41, 130.81, 164.81, 196.00, 261.63, 329.63 }, // F/C (Galactic expanse)
+                { 49.00, 146.83, 196.00, 233.08, 293.66, 329.63 }  // Gm9 (Ancient Reaper awakening)
+            };
+
+            // Ethereal arpeggiated space chime frequencies matching each chord
+            double[][] arpeggioSets = {
+                { 440.00, 523.25, 587.33, 659.25 }, // Dm: A4, C5, D5, E5
+                { 466.16, 587.33, 698.46, 880.00 }, // Bb: Bb4, D5, F5, A5
+                { 523.25, 659.25, 783.99, 659.25 }, // F: C5, E5, G5, E5
+                { 392.00, 466.16, 587.33, 659.25 }  // Gm: G4, Bb4, D5, E5
+            };
+
+            double chordDuration = 8.0; // 8.0s per chord (32-second full evolving progression)
+            double fadeTime = 2.0;       // 2.0s smooth equal-power crossfade
+            double[] phasesPad1 = new double[6];
+            double[] phasesPad2 = new double[6];
+            double pluckPhase = 0;
+            double currentPluckFreq = 440.0;
+            int lastPluckStep = -1;
 
             while (ambientRunning && soundEnabled) {
-                for (int i = 0; i < bufSize; i++) {
+                for (int i = 0; i < numSamples; i++) {
                     double t = sampleIndex / (double) ambSampleRate;
-                    // Dark sub-bass binaural drone (44.0 Hz + 46.5 Hz beating at 2.5 Hz)
-                    double wave1 = Math.sin(2 * Math.PI * 44.0 * t);
-                    double wave2 = Math.sin(2 * Math.PI * 46.5 * t) * 0.75;
-                    // Deep dark harmonic resonance at 88 Hz & 132 Hz
-                    double wave3 = Math.sin(2 * Math.PI * 88.0 * t) * 0.25;
-                    double wave4 = Math.sin(2 * Math.PI * 132.0 * t) * 0.12;
-                    // Slow 7-second cosmic pulse (LFO)
-                    double lfo = 0.65 + 0.35 * Math.sin(2 * Math.PI * 0.14 * t);
-                    // Extremely gentle pink-noise cosmic whisper
-                    double noise = (rnd.nextDouble() - 0.5) * 0.12;
-                    double sample = (wave1 + wave2 + wave3 + wave4 + noise) * lfo * 14.0;
-                    buf[i] = (byte) Math.max(-128, Math.min(127, (int) Math.round(sample)));
+                    double loopT = t % (chordDuration * 4);
+                    int chordIdx = (int) (loopT / chordDuration);
+                    int nextChordIdx = (chordIdx + 1) % 4;
+                    double chordProgress = (loopT - (chordIdx * chordDuration)) / chordDuration;
+
+                    // Equal-power sinusoidal crossfade between chords
+                    double crossfade = 0.0;
+                    double fadeThreshold = 1.0 - (fadeTime / chordDuration);
+                    if (chordProgress > fadeThreshold) {
+                        double p = (chordProgress - fadeThreshold) / (fadeTime / chordDuration);
+                        crossfade = 0.5 * (1.0 - Math.cos(p * Math.PI));
+                    }
+
+                    double padSample = 0;
+                    double[] c1 = chordNotes[chordIdx];
+                    double[] c2 = chordNotes[nextChordIdx];
+
+                    for (int v = 0; v < 6; v++) {
+                        phasesPad1[v] += 2.0 * Math.PI * c1[v] / ambSampleRate;
+                        phasesPad2[v] += 2.0 * Math.PI * c2[v] / ambSampleRate;
+                        if (phasesPad1[v] > 6283.185) phasesPad1[v] -= 6283.185;
+                        if (phasesPad2[v] > 6283.185) phasesPad2[v] -= 6283.185;
+
+                        // Analog synthesizer voice: fundamental + detuned chorus + gentle 2nd harmonic
+                        double v1 = Math.sin(phasesPad1[v]) * 0.55
+                                  + Math.sin(phasesPad1[v] * 1.0035) * 0.35
+                                  + Math.sin(phasesPad1[v] * 2.0) * 0.10;
+
+                        double v2 = Math.sin(phasesPad2[v]) * 0.55
+                                  + Math.sin(phasesPad2[v] * 1.0035) * 0.35
+                                  + Math.sin(phasesPad2[v] * 2.0) * 0.10;
+
+                        double blend = v1 * (1.0 - crossfade) + v2 * crossfade;
+                        double weight = (v == 0) ? 0.30 : 0.14;
+                        padSample += blend * weight;
+                    }
+
+                    // Slow cosmic breathing LFO (0.08 Hz)
+                    double lfo = 0.85 + 0.15 * Math.sin(2 * Math.PI * 0.08 * t);
+                    padSample *= lfo;
+
+                    // Ambient crystalline arpeggio note every 1.0 second (pure sci-fi melody)
+                    double noteRate = 1.0;
+                    int pluckStep = (int) (t / noteRate);
+                    double noteT = (t - (pluckStep * noteRate));
+                    if (pluckStep != lastPluckStep) {
+                        lastPluckStep = pluckStep;
+                        int noteIdx = pluckStep % 4;
+                        currentPluckFreq = arpeggioSets[chordIdx][noteIdx];
+                    }
+                    pluckPhase += 2.0 * Math.PI * currentPluckFreq / ambSampleRate;
+                    if (pluckPhase > 6283.185) pluckPhase -= 6283.185;
+                    double pluckEnv = Math.exp(-3.2 * noteT) * (1.0 - Math.exp(-35.0 * noteT));
+                    double pluckSample = (Math.sin(pluckPhase) + 0.15 * Math.sin(pluckPhase * 3.0)) * pluckEnv * 0.22;
+
+                    // Composite soundtrack: warm analog pads + starry arpeggios (zero noise/static)
+                    double total = (padSample * 0.78 + pluckSample * 0.22);
+                    short sampleShort = (short) Math.max(-32767, Math.min(32767, (int) Math.round(total * 14000.0)));
+                    buf[i * 2] = (byte) (sampleShort & 0xFF);
+                    buf[i * 2 + 1] = (byte) ((sampleShort >> 8) & 0xFF);
                     sampleIndex++;
                 }
-                line.write(buf, 0, bufSize);
+                line.write(buf, 0, buf.length);
             }
         } catch (Exception ignored) {
         } finally {

@@ -133,9 +133,11 @@ public class MainMenuPanel extends JPanel {
         // 3. Footer
         JPanel footerPanel = new JPanel(new BorderLayout());
         footerPanel.setOpaque(false);
-        JLabel lblFooter = new JLabel("Object-Oriented Programming in Java | Swing & CLI", SwingConstants.CENTER);
-        lblFooter.setFont(new Font("Monospaced", Font.PLAIN, 11));
-        lblFooter.setForeground(new Color(100, 120, 150));
+        footerPanel.setBorder(BorderFactory.createEmptyBorder(0, 15, 10, 15));
+
+        JLabel lblFooter = new JLabel("Sebiny Labs", SwingConstants.CENTER);
+        lblFooter.setFont(new Font("Monospaced", Font.BOLD, 12));
+        lblFooter.setForeground(new Color(110, 140, 180));
         footerPanel.add(lblFooter, BorderLayout.CENTER);
 
         btnMainAudio = new JButton(SoundEffects.isSoundEnabled() ? "🔊 Audio: ON" : "🔇 Audio: OFF");
@@ -143,6 +145,7 @@ public class MainMenuPanel extends JPanel {
         btnMainAudio.setBackground(new Color(20, 26, 38));
         btnMainAudio.setForeground(new Color(170, 200, 230));
         btnMainAudio.setFocusPainted(false);
+        btnMainAudio.setPreferredSize(new Dimension(130, 28));
         btnMainAudio.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -151,6 +154,13 @@ public class MainMenuPanel extends JPanel {
             }
         });
         footerPanel.add(btnMainAudio, BorderLayout.EAST);
+
+        // Balance left side so Sebiny Labs remains perfectly centered
+        JPanel leftSpacer = new JPanel();
+        leftSpacer.setOpaque(false);
+        leftSpacer.setPreferredSize(new Dimension(130, 28));
+        footerPanel.add(leftSpacer, BorderLayout.WEST);
+
         add(footerPanel, BorderLayout.SOUTH);
     }
 

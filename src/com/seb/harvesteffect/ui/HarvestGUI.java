@@ -1764,7 +1764,7 @@ public class HarvestGUI extends JFrame {
 
     private void showCreditsDialog() {
         String cr = "THE HARVEST EFFECT\n\n"
-                + "Developer: Sebastian\n"
+                + "Studio / Developer: Sebastian (Sebiny Labs)\n"
                 + "Project: Object-Oriented Programming in Java\n"
                 + "Engine Architecture: Clean OOP / Observer Pattern / MVC\n"
                 + "Framework: Java Swing (javax.swing / java.awt)\n"

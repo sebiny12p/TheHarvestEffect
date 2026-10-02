@@ -2188,6 +2188,19 @@ public class HarvestEffectTestSuite {
             menu.refreshAudioToggleText();
             assertTrue("MainMenuPanel refreshAudioToggleText executes cleanly", true);
 
+            boolean foundSebinyLabs = false;
+            for (java.awt.Component comp : menu.getComponents()) {
+                if (comp instanceof javax.swing.JPanel) {
+                    for (java.awt.Component sub : ((javax.swing.JPanel) comp).getComponents()) {
+                        if (sub instanceof javax.swing.JLabel && "Sebiny Labs".equals(((javax.swing.JLabel) sub).getText())) {
+                            foundSebinyLabs = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            assertTrue("MainMenuPanel displays 'Sebiny Labs' in footer", foundSebinyLabs);
+
             com.seb.harvesteffect.model.entity.StarSystem testSys = state.getGalaxyMap().getSystem(0, 0);
             com.seb.harvesteffect.ui.PlanetTilePanel tile = new com.seb.harvesteffect.ui.PlanetTilePanel(testSys, null);
             String tt = tile.getToolTipText();
@@ -2245,6 +2258,7 @@ public class HarvestEffectTestSuite {
         String output = outCapturer.toString();
         assertTrue("CLI prints Master Galactic Codex", output.contains("MASTER GALACTIC CODEX"));
         assertTrue("CLI prints Transmission Credits", output.contains("THE HARVEST EFFECT CREDITS"));
+        assertTrue("CLI credits recognize Sebiny Labs", output.contains("Sebiny Labs"));
         assertTrue("CLI deploys Mass Relay in [0, 1]", output.contains("Mass Relay Beacon operational in Sector 0, Cluster 1"));
         assertTrue("CLI focuses Primary Relay corridor", output.contains("Primary Mass Relay corridor focused"));
         assertTrue("CLI seeds HUMANITY in [0, 2]", output.contains("HUMANITY successfully seeded"));

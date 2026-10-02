@@ -1100,7 +1100,7 @@ public class Main {
         System.out.println("==============================================================");
         System.out.println("                THE HARVEST EFFECT CREDITS                    ");
         System.out.println("==============================================================");
-        System.out.println("  Developer: Sebastian");
+        System.out.println("  Studio / Developer: Sebastian (Sebiny Labs)");
         System.out.println("  Project: Object-Oriented Programming in Java");
         System.out.println("  Architecture: Clean OOP / Observer Pattern / MVC");
         System.out.println("  Framework: Java Swing (javax.swing) + Procedural Audio");
