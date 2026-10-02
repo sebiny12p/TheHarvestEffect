@@ -205,4 +205,4 @@ Scripts are also provided in the root directory:
 
 - **Student:** Sebastian
 - **GitHub:** [sebiny12p](https://github.com/sebiny12p)
-- **Course:** Object-Oriented Programming in Java (Y2S1)
+- **Course:** Object-Oriented Programming in Java
