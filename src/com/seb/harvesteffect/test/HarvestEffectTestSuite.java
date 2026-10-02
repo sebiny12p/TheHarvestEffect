@@ -5,8 +5,10 @@ import com.seb.harvesteffect.exception.*;
 import com.seb.harvesteffect.model.civilization.*;
 import com.seb.harvesteffect.model.entity.*;
 import com.seb.harvesteffect.model.item.*;
+import com.seb.harvesteffect.Main;
 import com.seb.harvesteffect.audio.SoundEffects;
 import com.seb.harvesteffect.model.unit.*;
+import com.seb.harvesteffect.ui.CommandParser;
 
 /**
  * Regression and integration verification suite for The Harvest Effect engine.
@@ -68,6 +70,7 @@ public class HarvestEffectTestSuite {
         testMissionCompletionSandboxSuppressionAndVictoryNarrative();
         testBroadSpectrumFrequencyScanningAndTuning();
         testPolishAdditionsAudioAmbienceAndChronicleMetrics();
+        testCliFullWorkflowAndSafety();
 
         System.out.println("==============================================================");
         System.out.printf("Test Results: %d/%d tests passed successfully!%n", passedTests, totalTests);
@@ -2193,5 +2196,78 @@ public class HarvestEffectTestSuite {
         } catch (Throwable t) {
             assertTrue("UI panel components test executed without headless errors: " + t.getMessage(), true);
         }
+    }
+
+    private static void testCliFullWorkflowAndSafety() {
+        System.out.println("\n[Test 48: CLI Full Workflow, Directives & Crash Safety Verification]");
+
+        StringBuilder script = new StringBuilder();
+        script.append("4\n"); // View Codex
+        script.append("5\n"); // View Credits
+        script.append("2\n"); // New Campaign
+        script.append("Sovereign-CLI\n"); // Flagship designation
+        script.append("1\n0 1\n"); // Deploy Relay [0,1]
+        script.append("3\n0 1\n"); // Broadcast Signal [0,1]
+        script.append("2\n1\n0 2\n"); // Seed Humanity [0,2]
+        script.append("5\n1\n0 3\n"); // Deploy Collector Drone [0,3]
+        script.append("5\n4\n0 3\n0 4\n"); // Relocate Drone from [0,3] to [0,4] (moveChoice = 4)
+        script.append("5\n5\n0 4\n"); // Dismantle Drone [0,4] (dismantleChoice = 5)
+        script.append("10\n0 1\n"); // Relocate Sovereign to [0,1]
+        script.append("10\n0 2\n"); // Relocate Sovereign second jump (blocked)
+        script.append("8\n"); // Advance Epoch
+        script.append("12\n1\n119.4\n"); // Tune Sub-Space Radio to Shepard (locks and breaks)
+        script.append("12\n2\n1\n"); // View Decrypted Archives, play transmission 1
+        script.append("16\n"); // View Ascension Chronicle
+        script.append("6\n3\n1\n"); // Requisition humanity-probe from Citadel Nexus into Cargo Hold
+        script.append("7\n1\n1\n"); // Inspect Cargo -> Liquidate/salvage pod 1
+        script.append("13\n1\n"); // Save Game to Slot 1
+        script.append("0\n"); // Auto-save & return to Main Menu
+        script.append("1\n"); // Continue Campaign
+        script.append("0\n"); // Return to Main Menu
+        script.append("3\n1\n"); // Load Slot 1
+        script.append("0\n"); // Return to Main Menu
+        script.append("0\n"); // Exit to Desktop
+
+        java.io.PrintStream origOut = System.out;
+        java.io.ByteArrayOutputStream outCapturer = new java.io.ByteArrayOutputStream();
+        try {
+            System.setOut(new java.io.PrintStream(outCapturer));
+            CommandParser cp = new CommandParser(new java.util.Scanner(script.toString()));
+            Main.launchCliMode(cp);
+        } catch (Throwable t) {
+            origOut.println("[FATAL] CLI threw unexpected error: " + t.getMessage());
+            t.printStackTrace(origOut);
+            assertTrue("CLI executed without crashing or unhandled exceptions", false);
+        } finally {
+            System.setOut(origOut);
+        }
+
+        String output = outCapturer.toString();
+        assertTrue("CLI prints Master Galactic Codex", output.contains("MASTER GALACTIC CODEX"));
+        assertTrue("CLI prints Transmission Credits", output.contains("THE HARVEST EFFECT CREDITS"));
+        assertTrue("CLI deploys Mass Relay in [0, 1]", output.contains("Mass Relay Beacon operational in Sector 0, Cluster 1"));
+        assertTrue("CLI focuses Primary Relay corridor", output.contains("Primary Mass Relay corridor focused"));
+        assertTrue("CLI seeds HUMANITY in [0, 2]", output.contains("HUMANITY successfully seeded"));
+        assertTrue("CLI deploys Collector Drone in [0, 3]", output.contains("Collector Drone construct deployed in [0, 3]"));
+        assertTrue("CLI relocates swarm from [0, 3] to [0, 4]", output.contains("transferred from [0, 3] to [0, 4]"));
+        assertTrue("CLI dismantles construct recovering salvage", output.contains("Swarm construct decommissioned"));
+        assertTrue("CLI relocates Sovereign Flagship", output.contains("Sovereign Flagship now stationed in orbit"));
+        assertTrue("CLI blocks second jump in same epoch safely", output.contains("discharging static electricity") || output.contains("RELOCATION FAILED"));
+        assertTrue("CLI advances epoch +5,000 years", output.contains("EPOCH ADVANCED: +5,000 YEARS"));
+        assertTrue("CLI decodes Shepard easter egg via radio", output.contains("CARRIER LOCKED") || output.contains("Shepard"));
+        assertTrue("CLI displays Ascension Chronicle metrics", output.contains("ASCENSION CHRONICLE // REAPER LIFETIME ARCHIVE"));
+        assertTrue("CLI requisitions item into Cargo Hold", output.contains("stored in Cargo Hold"));
+        assertTrue("CLI liquidates cargo pod for salvage", output.contains("[SALVAGED] Liquidated"));
+        assertTrue("CLI saves campaign to Slot 1", output.contains("Campaign state recorded to Slot 1"));
+        assertTrue("CLI loads campaign from Slot 1", output.contains("Campaign restored from Slot 1"));
+        assertTrue("CLI exits cleanly to dark space", output.contains("Withdrawing to dark space. Process terminated."));
+
+        // Clean up slot 1 test save
+        try {
+            java.io.File s1 = SaveManager.getSlotFile(1);
+            if (s1.exists()) s1.delete();
+            java.io.File auto = SaveManager.getSlotFile(0);
+            if (auto.exists()) auto.delete();
+        } catch (Exception ignored) {}
     }
 }

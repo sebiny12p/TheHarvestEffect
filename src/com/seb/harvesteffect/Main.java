@@ -51,9 +51,11 @@ public class Main {
         });
     }
 
-    private static void launchCliMode() {
-        CommandParser parser = new CommandParser();
+    public static void launchCliMode() {
+        launchCliMode(new CommandParser());
+    }
 
+    public static void launchCliMode(CommandParser parser) {
         boolean inMainMenu = true;
         while (inMainMenu) {
             System.out.println("==========================================================================");
@@ -119,7 +121,7 @@ public class Main {
         }
     }
 
-    private static void runGameLoop(ReaperEngine engine, CommandParser parser) {
+    public static void runGameLoop(ReaperEngine engine, CommandParser parser) {
         GalacticState state = engine.getState();
         MissionManager missionManager = engine.getMissionManager();
 
@@ -147,7 +149,7 @@ public class Main {
             System.out.println("  4. Initiate The Extinction Harvest (Harvest Protocol)");
             System.out.println("  5. Command Biomechanical Swarm (Recharge, Calibrate, Extract)");
             System.out.println("  6. Access Dark Space Citadel Nexus (Upgrades, Lockdown, Trade)");
-            System.out.println("  7. Inspect Flagship Cargo Pods");
+            System.out.println("  7. Inspect & Manage Flagship Cargo Pods");
             System.out.println("  8. Advance Galactic Epoch (+5,000 Years / Evolutionary Growth)");
             System.out.println("  9. Access Armada Research Matrix");
             System.out.println(" 10. Relocate Sovereign Flagship Local Orbit");
@@ -157,9 +159,10 @@ public class Main {
             System.out.println(" 13. Save Campaign Progression to Disk");
             System.out.println(" 14. Terraform Planetary Climate (Biome Shift)");
             System.out.println(" 15. Sequence Species Genome from Bio-Banks");
+            System.out.println(" 16. View Ascension Chronicle (Lifetime Harvest Metrics)");
             System.out.println("  0. Return to Main Menu");
 
-            int action = parser.readInt("Enter tactical directive (0-15): ", 0, 15);
+            int action = parser.readInt("Enter tactical directive (0-16): ", 0, 16);
             System.out.println();
 
             switch (action) {
@@ -187,7 +190,7 @@ public class Main {
                     handleCitadelNexus(engine, state, parser);
                     break;
                 case 7:
-                    handleInspectCargo(state);
+                    handleInspectCargo(state, parser);
                     break;
                 case 8:
                     handleAdvanceEpoch(engine, state);
@@ -213,6 +216,9 @@ public class Main {
                     break;
                 case 15:
                     handleSequenceGenome(engine, parser);
+                    break;
+                case 16:
+                    handleAscensionChronicle(engine);
                     break;
             }
 
@@ -339,7 +345,8 @@ public class Main {
                     15 - unlocked.size());
         }
 
-        int choice = parser.readInt("Select species number (1-" + unlocked.size() + "): ", 1, unlocked.size());
+        int choice = parser.readInt("Select species number (1-" + unlocked.size() + ", 0 to cancel): ", 0, unlocked.size());
+        if (choice == 0) return;
         String selectedSpecies = unlocked.get(choice - 1);
         Civilization targetCiv = engine.createCivilization(selectedSpecies);
 
@@ -373,7 +380,9 @@ public class Main {
         System.out.println("Extinction Harvest Directives:");
         System.out.println("  1. Harvest Targeted Star System");
         System.out.println("  2. Batch Harvest ALL Ripe Worlds Across Galaxy");
-        int subChoice = parser.readInt("Select protocol (1-2): ", 1, 2);
+        System.out.println("  0. Cancel Harvest Protocol");
+        int subChoice = parser.readInt("Select protocol (1-2, 0 to cancel): ", 0, 2);
+        if (subChoice == 0) return;
 
         if (subChoice == 2) {
             handleBatchHarvest(engine);
@@ -469,9 +478,11 @@ public class Main {
         System.out.printf("  %d. Extract Telemetry / Biotic Yield%n", extractChoice);
         System.out.printf("  %d. Relocate / Move Stationed Swarm%n", moveChoice);
         System.out.printf("  %d. Dismantle Stationed Swarm (Recover 50%% Salvage)%n", dismantleChoice);
+        System.out.println("  0. Cancel Swarm Operations");
 
         GalacticState state = engine.getState();
-        int choice = parser.readInt(String.format("Directive (1-%d): ", dismantleChoice), 1, dismantleChoice);
+        int choice = parser.readInt(String.format("Directive (1-%d, 0 to cancel): ", dismantleChoice), 0, dismantleChoice);
+        if (choice == 0) return;
         if (choice >= 1 && choice <= unlockedUnits.size()) {
             String selectedUnit = unlockedUnits.get(choice - 1);
             int[] coords = parser.readCoordinates("Target star system for swarm deployment",
@@ -594,7 +605,7 @@ public class Main {
         }
     }
 
-    private static void handleInspectCargo(GalacticState state) {
+    private static void handleInspectCargo(GalacticState state, CommandParser parser) {
         System.out.println("==============================================================");
         System.out.printf("      FLAGSHIP CARGO POD MANIFEST (%d/%d SLOTS OCCUPIED)       %n",
                 state.getCargoHold().getOccupiedCount(), state.getCargoHold().getCapacity());
@@ -602,14 +613,31 @@ public class Main {
         List<Resource> items = state.getCargoHold().getManifest();
         if (items.isEmpty()) {
             System.out.println("  Cargo pods empty. Harvest civilizations or trade at Citadel.");
-        } else {
-            for (int i = 0; i < items.size(); i++) {
-                Resource r = items.get(i);
-                System.out.printf("  Pod [%2d] %-30s | %4d Mass | Salvage: %d Eezo (Needed for Apex Tech)%n",
-                        i, r.getItemName(), r.getMassUnits(), r.getEezoValue());
-            }
+            System.out.println("==============================================================");
+            return;
+        }
+        for (int i = 0; i < items.size(); i++) {
+            Resource r = items.get(i);
+            System.out.printf("  Pod [%2d] %-30s | %4d Mass | Salvage: %d Eezo%n",
+                    i + 1, r.getItemName(), r.getMassUnits(), r.getEezoValue());
         }
         System.out.println("==============================================================");
+        System.out.println("Cargo Directives:");
+        System.out.println("  1. Liquidate / Salvage a Cargo Pod for Eezo");
+        System.out.println("  0. Return to Command Console");
+
+        int choice = parser.readInt("Select directive (0-1): ", 0, 1);
+        if (choice == 1) {
+            int slot = parser.readInt(String.format("Enter pod number to salvage (1-%d, 0 to cancel): ", items.size()), 0, items.size());
+            if (slot > 0) {
+                Resource removed = state.getCargoHold().retrieve(slot - 1);
+                if (removed != null) {
+                    state.addEezo(removed.getEezoValue());
+                    System.out.printf("[SALVAGED] Liquidated %s for +%d Eezo. New Eezo reserves: %d%n",
+                            removed.getItemName(), removed.getEezoValue(), state.getEezoReserves());
+                }
+            }
+        }
     }
 
     private static void handleAdvanceEpoch(ReaperEngine engine, GalacticState state) {
@@ -648,12 +676,14 @@ public class Main {
         int[] coords = parser.readCoordinates("Target star system for Sovereign Flagship relocation",
                 state.getGalaxyMap().getRowCount(), state.getGalaxyMap().getColCount());
         try {
-            int cost = engine.moveFlagship(coords[0], coords[1]);
+            int cost = engine.moveFlagship(coords[0], coords[1], true);
             StarSystem sys = engine.getState().getGalaxyMap().getSystem(coords[0], coords[1]);
             System.out.printf("[SUCCESS] Sovereign Flagship now stationed in orbit around %s [%d, %d] (-%d Eezo).%n",
                     sys.getSystemName(), coords[0], coords[1], cost);
             System.out.println("Local Orbit Bonus Active: +20% Harvest Yield & +1 Growth Acceleration!");
         } catch (InsufficientEezoException e) {
+            System.out.printf("[RELOCATION FAILED] %s%n", e.getMessage());
+        } catch (ReaperException e) {
             System.out.printf("[RELOCATION FAILED] %s%n", e.getMessage());
         }
     }
@@ -713,12 +743,17 @@ public class Main {
             boolean sequenced = engine.isGenomeSequenced(sp);
             int eCost = engine.getGenomeEezoCost(sp);
             int bCost = engine.getGenomeBiomassCost(sp);
+            int reqCargo = engine.getGenomeRequiredCargoPods(sp);
 
             String statusStr;
             if (sequenced || storyUnlocked) {
                 statusStr = storyUnlocked ? "✓ STORY UNLOCKED" : "✓ RESEARCHED";
             } else {
-                statusStr = String.format("RESEARCHABLE (Cost: %d Eezo, %d Bio)", eCost, bCost);
+                if (reqCargo > 0) {
+                    statusStr = String.format("RESEARCHABLE (Cost: %d Eezo, %d Bio, %d Cargo Pod)", eCost, bCost, reqCargo);
+                } else {
+                    statusStr = String.format("RESEARCHABLE (Cost: %d Eezo, %d Bio)", eCost, bCost);
+                }
             }
             System.out.printf("  [%2d] %-12s | %s%n", i + 1, sp, statusStr);
         }
@@ -808,28 +843,37 @@ public class Main {
             System.out.println("  🚨 [PRIORITY INTERCEPT: ENCRYPTED CARRIER DETECTED]");
             System.out.printf("  Source: %s%n", sig.getSource());
             System.out.printf("  Clue:   %s%n%n", sig.getFrequencyClue());
-            System.out.println("Tune receiver frequency to match carrier wave and lock signal.");
-            System.out.println("Target range: 100.0 to 999.0 MHz (Enter 0 to abort tuning).");
+        }
 
+        System.out.println("Sub-Space Directives:");
+        System.out.println("  1. Tune Sub-Space Radio (Free-Scan: 100.0 - 999.0 MHz)");
+        System.out.printf("  2. Review Decrypted Signal Archives (%d Unlocked Transmissions)%n",
+                scanner.getDecodedArchive().size());
+        System.out.println("  0. Return to Tactical Console");
+
+        int dirChoice = parser.readInt("Select directive (0-2): ", 0, 2);
+        if (dirChoice == 1) {
+            System.out.println("\nTune receiver frequency to match carrier wave and lock signal.");
+            System.out.println("Target range: 100.0 to 999.0 MHz (Enter 0 to stop scanning).");
             while (true) {
                 double tuned = parser.readDouble("Enter tuning frequency in MHz (e.g. 119.4) or 0 to exit: ", 0.0, 999.0);
                 if (tuned == 0.0) break;
 
-                SubSpaceScanner.DecodeResult res = scanner.attemptDecode(sig.getId(), tuned, state);
+                SubSpaceScanner.DecodeResult res = scanner.attemptDecodeAny(tuned, state);
                 System.out.println(res.getFeedback());
-                if (res.isLocked()) {
-                    System.out.println("\n--- [DECRYPTED AUDIO TRANSCRIPT] ----------------------------");
-                    System.out.println(sig.getRawContent());
-                    System.out.println("-------------------------------------------------------------");
+                if (res.isLocked() && res.getTransmission() != null) {
+                    System.out.println("\n--- [DECRYPTED AUDIO TRANSCRIPT: " + res.getTransmission().getTitle().toUpperCase() + "] ---");
+                    System.out.println("Source: " + res.getTransmission().getSource());
+                    System.out.println(res.getTransmission().getRawContent());
+                    System.out.println("-------------------------------------------------------------\n");
                     break;
                 }
             }
-        } else {
+        } else if (dirChoice == 2) {
             List<SubSpaceScanner.SignalTransmission> archive = scanner.getDecodedArchive();
             if (archive.isEmpty()) {
-                System.out.println("  Receiver scanning sub-space channels... (All bands quiet).");
-                System.out.println("  Anomalies trigger through gameplay events (harvesting Earth,");
-                System.out.println("  Collector drone scans, solar flare surges, or cargo expansion).");
+                System.out.println("  No transmissions decrypted yet.");
+                System.out.println("  Tune into frequencies across 100.0 - 999.0 MHz to intercept secret signals!");
             } else {
                 System.out.printf("  Decrypted Signal Archives (%d Unlocked Transmissions):%n", archive.size());
                 for (int i = 0; i < archive.size(); i++) {
@@ -847,6 +891,102 @@ public class Main {
             }
         }
         System.out.println("==============================================================");
+    }
+
+    private static void handleAscensionChronicle(ReaperEngine engine) {
+        GalacticState state = engine.getState();
+        CampaignManager campaign = engine.getCampaign();
+        CitadelNexus nexus = engine.getNexus();
+        SubSpaceScanner scanner = engine.getScanner();
+
+        int totalSystems = 24;
+        int activeCivilizations = 0;
+        int readyHarvests = 0;
+        int activeRelays = 0;
+        int collectorDrones = 0;
+        int huskSwarms = 0;
+        int scionBehemoths = 0;
+        int kineticBarriersActive = 0;
+        int unlockedSectors = 0;
+
+        for (int s = 0; s < state.getGalaxyMap().getRowCount(); s++) {
+            if (state.getGalaxyMap().isSectorUnlocked(s)) {
+                unlockedSectors++;
+            }
+            for (int c = 0; c < state.getGalaxyMap().getColCount(); c++) {
+                StarSystem sys = state.getGalaxyMap().getSystem(s, c);
+                if (sys.getCivilization() != null) {
+                    activeCivilizations++;
+                    if (sys.getCivilization().isHarvestReady()) {
+                        readyHarvests++;
+                    }
+                    if (sys.getCivilization().hasKineticBarrier()) {
+                        kineticBarriersActive++;
+                    }
+                }
+                if (sys.isRelayBeaconDeployed()) {
+                    activeRelays++;
+                }
+                if (sys.getBiomechanicalUnit() != null) {
+                    String d = sys.getBiomechanicalUnit().getDesignation().toLowerCase();
+                    if (d.contains("drone") || d.contains("collector")) collectorDrones++;
+                    else if (d.contains("husk")) huskSwarms++;
+                    else if (d.contains("scion") || d.contains("behemoth")) scionBehemoths++;
+                }
+            }
+        }
+
+        System.out.println("==========================================================================");
+        System.out.println("             ASCENSION CHRONICLE // REAPER LIFETIME ARCHIVE               ");
+        System.out.println("==========================================================================");
+        System.out.printf("  Flagship: %s | Epoch %d (%,d Galactic Years) | %s%n",
+                state.getFlagshipName(), state.getCycleEpoch(),
+                (long) (state.getCycleEpoch() - 1) * 5000L,
+                campaign.getCurrentAct().getTitle());
+        System.out.println("--------------------------------------------------------------------------");
+        System.out.println("🧬 BIOMASS & ASCENSION METRICS:");
+        System.out.printf("  • Total Ascensions Executed:    %d civilizations reaped%n", campaign.getTotalAscensions());
+        System.out.printf("  • Accumulated Biomass Reserves: %,d Biomass Units%n", state.getAccumulatedBiomass());
+        System.out.printf("  • Element Zero Reserves:        %,d Eezo%n", state.getEezoReserves());
+        System.out.printf("  • Specimen Pods in Cargo:       %d / %d pods stored%n%n",
+                state.countCargoSpecimens(), state.getCargoHold().getCapacity());
+
+        System.out.println("🌌 GALACTIC NURSERY STATUS:");
+        System.out.printf("  • Active Populated Worlds:      %d / %d star systems%n", activeCivilizations, totalSystems);
+        System.out.printf("  • Apex Zenith Crops Ready:      %d worlds primed for harvest%n", readyHarvests);
+        System.out.printf("  • Orbital Kinetic Barriers:     %d worlds shielded%n", kineticBarriersActive);
+        System.out.printf("  • Connected Sectors:            %d / 4 galactic sectors%n%n", unlockedSectors);
+
+        System.out.println("🤖 BIOMECHANICAL SWARM DEPLOYMENT:");
+        System.out.printf("  • Total Constructs Stationed:   %d active units%n", collectorDrones + huskSwarms + scionBehemoths);
+        System.out.printf("  • Collector Drone Catalysts:    %d active (growth acceleration)%n", collectorDrones);
+        System.out.printf("  • Husk Swarm Infiltrators:      %d active (barrier infiltration)%n", huskSwarms);
+        System.out.printf("  • Scion Siege Behemoths:        %d active (barrier crushing)%n%n", scionBehemoths);
+
+        System.out.println("🏛️ CITADEL NEXUS MEGASYSTEM:");
+        System.out.printf("  • Citadel Core Level:           Tier %d: %s%n", nexus.getCurrentTier(), nexus.getTierName());
+        System.out.printf("  • Active Relay Beacons:         %d / 24 star systems%n", activeRelays);
+        String lockStr = nexus.isArmsLockdownActive()
+                ? String.format("SEALED (%d epochs remaining)", nexus.getLockdownDurationRemaining())
+                : (nexus.getLockdownCooldownRemaining() > 0
+                    ? String.format("OPEN (Recharging: %d epochs)", nexus.getLockdownCooldownRemaining())
+                    : "OPEN (Ready to seal)");
+        System.out.printf("  • Arms Lockdown Status:         %s%n", lockStr);
+        System.out.printf("  • Harvest Relay Multiplier:     %.2fx yield bonus%n%n", nexus.getHarvestRelayBonusMultiplier());
+
+        System.out.println("📻 SUB-SPACE INTELLIGENCE & EASTER EGGS:");
+        System.out.printf("  • Intercepted Transmissions:    %d / 7 anomalous carrier waves%n", scanner.getAllDiscoveredSignals().size());
+        System.out.printf("  • Decrypted Easter Eggs:        %d / 7 transmissions decoded%n", scanner.getDecodedArchive().size());
+        System.out.printf("  • Cosmic Phenomenon:            %s%n%n", state.getCurrentPhenomenon().getTitle());
+
+        System.out.println("⚠️ ALLIANCE CRUCIBLE INTEL:");
+        System.out.printf("  • Campaign Act:                 %s%n", campaign.getCurrentAct().name());
+        System.out.printf("  • Crucible Threat Clock:        %d%% construction progress%n", campaign.getCrucibleProgress());
+        String outcome = campaign.isCampaignVictory()
+                ? "VICTORY (Galactic Convergence Achieved)"
+                : (campaign.isCrucibleDefeat() ? "CRITICAL DEFEAT (Crucible Fired)" : "WAR IN PROGRESS");
+        System.out.printf("  • Status of the War:            %s%n", outcome);
+        System.out.println("==========================================================================");
     }
 
     private static void handleSaveGame(ReaperEngine engine, CommandParser parser) {
